@@ -1,0 +1,68 @@
+
+plugins {
+    id 'java'
+    id 'idea'
+    id 'application'
+    id 'base'
+}
+
+// ---------------------- Java ----------------------
+java {
+    sourceCompatibility = JavaVersion.VERSION_17
+    targetCompatibility = JavaVersion.VERSION_17
+}
+
+// ---------------------- Repositories ----------------------
+repositories {
+    maven { url "https://repo.springsource.org/libs-milestone" }
+    maven { url "https://repo.springsource.org/libs-release" }
+    mavenLocal()
+    mavenCentral()
+}
+
+// ---------------------- Dependencies ----------------------
+dependencies {
+    implementation 'org.slf4j:slf4j-api:2.0.+'
+    implementation 'ch.qos.logback:logback-classic:1.+'
+    implementation 'com.datastax.cassandra:cassandra-driver-core:3.3.0'
+    implementation 'org.apache.cassandra:cassandra-all:3.11.0'
+}
+
+// ---------------------- Build ----------------------
+project.buildDir = 'bin'
+
+// ---------------------- Application ----------------------
+application {
+    mainClass = 'cassdemo.Main'
+    applicationDefaultJvmArgs = [
+        '--add-opens', 'java.base/jdk.internal.misc=ALL-UNNAMED',
+        '--add-opens', 'java.base/java.nio=ALL-UNNAMED',
+        '--add-opens', 'java.base/java.security=ALL-UNNAMED',
+        '--add-opens', 'jdk.unsupported/sun.misc=ALL-UNNAMED',
+        '--add-opens', 'java.base/sun.security.action=ALL-UNNAMED',
+        '--add-opens', 'jdk.naming.rmi/com.sun.jndi.rmi.registry=ALL-UNNAMED',
+        '--add-opens', 'java.base/sun.net=ALL-UNNAMED',
+        '--add-opens', 'java.base/java.lang=ALL-UNNAMED',
+        '--add-opens', 'java.base/java.lang.reflect=ALL-UNNAMED',
+        '--add-opens', 'java.base/sun.nio.ch=ALL-UNNAMED'
+    ]
+}
+
+// ---------------------- Run task customization ----------------------
+tasks.named('run', JavaExec) {
+    standardInput = System.in
+
+    if (project.hasProperty('myargs')) {
+        String[] myargsArray = myargs.split(' ')
+        for (int i = 0; i < myargsArray.length; i++)
+        myargsArray[i] = myargsArray[i].trim()
+        args(myargsArray)
+    }
+}
+
+// Optional: tweak JavaExec tasks globally
+tasks.withType(JavaExec) {
+    doFirst {
+        // println commandLine
+    }
+}
