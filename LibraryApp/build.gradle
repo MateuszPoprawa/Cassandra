@@ -33,7 +33,7 @@ project.buildDir = 'bin'
 
 // ---------------------- Application ----------------------
 application {
-    mainClass = 'cassdemo.Main'
+    mainClass = 'pl.put.Main'
     applicationDefaultJvmArgs = [
         '--add-opens', 'java.base/jdk.internal.misc=ALL-UNNAMED',
         '--add-opens', 'java.base/java.nio=ALL-UNNAMED',
