@@ -26,13 +26,11 @@ public class Main {
 
         BackendSession session = new BackendSession(contactPoint, keyspace);
 
-        session.upsertUser("PP", "Adam", 609, "A St");
-        session.upsertUser("PP", "Ola", 509, null);
-        session.upsertUser("UAM", "Ewa", 720, "B St");
-        session.upsertUser("PP", "Kasia", 713, "C St");
+        session.upsertBook("library1", "Poznań", "J.R.R. Tolkien", "The Lord of the Rings");
+        session.upsertBook("library1", "Poznań", "Frank Herbert", "Dune" );
 
         String output = session.selectAll();
-        System.out.println("Users: \n" + output);
+        System.out.println("Books: \n" + output);
 
         session.deleteAll();
 

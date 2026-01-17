@@ -32,20 +32,19 @@ public class BackendSession {
 		prepareStatements();
 	}
 
-	private static PreparedStatement SELECT_ALL_FROM_USERS;
-	private static PreparedStatement INSERT_INTO_USERS;
-	private static PreparedStatement DELETE_ALL_FROM_USERS;
+	private static PreparedStatement SELECT_ALL_FROM_LIBRARY_DATA;
+	private static PreparedStatement INSERT_INTO_LIBRARY_DATA;
+	private static PreparedStatement DELETE_ALL_FROM_LIBRARY_DATA;
 
-	private static final String USER_FORMAT = "- %-10s  %-16s %-10s %-10s\n";
-	// private static final SimpleDateFormat df = new
-	// SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+	private static final String LIBRARY_DATA_FORMAT = "- %-10s %-10s %-10s %-10s\n";
+
 
 	private void prepareStatements() throws BackendException {
 		try {
-			SELECT_ALL_FROM_USERS = session.prepare("SELECT * FROM users;");
-			INSERT_INTO_USERS = session
-					.prepare("INSERT INTO users (companyName, name, phone, street) VALUES (?, ?, ?, ?);");
-			DELETE_ALL_FROM_USERS = session.prepare("TRUNCATE users;");
+			SELECT_ALL_FROM_LIBRARY_DATA = session.prepare("SELECT * FROM library_data;");
+			INSERT_INTO_LIBRARY_DATA = session
+					.prepare("INSERT INTO library_data (library_name, library_location, author, book_name) VALUES (?, ?, ?, ?);");
+			DELETE_ALL_FROM_LIBRARY_DATA = session.prepare("TRUNCATE library_data;");
 		} catch (Exception e) {
 			throw new BackendException("Could not prepare statements. " + e.getMessage() + ".", e);
 		}
@@ -55,7 +54,7 @@ public class BackendSession {
 
 	public String selectAll() throws BackendException {
 		StringBuilder builder = new StringBuilder();
-		BoundStatement bs = new BoundStatement(SELECT_ALL_FROM_USERS);
+		BoundStatement bs = new BoundStatement(SELECT_ALL_FROM_LIBRARY_DATA);
 
 		ResultSet rs = null;
 
@@ -66,20 +65,20 @@ public class BackendSession {
 		}
 
 		for (Row row : rs) {
-			String rcompanyName = row.getString("companyName");
-			String rname = row.getString("name");
-			int rphone = row.getInt("phone");
-			String rstreet = row.getString("street");
+			String library_name = row.getString("library_name");
+			String library_location = row.getString("library_location");
+			String author = row.getString("author");
+			String book_name = row.getString("book_name");
 
-			builder.append(String.format(USER_FORMAT, rcompanyName, rname, rphone, rstreet));
+			builder.append(String.format(LIBRARY_DATA_FORMAT, library_name, library_location, author, book_name));
 		}
 
 		return builder.toString();
 	}
 
-	public void upsertUser(String companyName, String name, int phone, String street) throws BackendException {
-		BoundStatement bs = new BoundStatement(INSERT_INTO_USERS);
-		bs.bind(companyName, name, phone, street);
+	public void upsertBook(String library_name, String library_location, String author, String book_name) throws BackendException {
+		BoundStatement bs = new BoundStatement(INSERT_INTO_LIBRARY_DATA);
+		bs.bind(library_name, library_location, author, book_name);
 
 		try {
 			session.execute(bs);
@@ -87,11 +86,11 @@ public class BackendSession {
 			throw new BackendException("Could not perform an upsert. " + e.getMessage() + ".", e);
 		}
 
-		logger.info("User " + name + " upserted");
+		logger.info("Book " + book_name + " upserted");
 	}
 
 	public void deleteAll() throws BackendException {
-		BoundStatement bs = new BoundStatement(DELETE_ALL_FROM_USERS);
+		BoundStatement bs = new BoundStatement(DELETE_ALL_FROM_LIBRARY_DATA);
 
 		try {
 			session.execute(bs);
@@ -99,7 +98,7 @@ public class BackendSession {
 			throw new BackendException("Could not perform a delete operation. " + e.getMessage() + ".", e);
 		}
 
-		logger.info("All users deleted");
+		logger.info("All books deleted");
 	}
 
 	protected void finalize() {
