@@ -10,7 +10,7 @@ public class Main {
 
     private static final String PROPERTIES_FILENAME = "config.properties";
 
-    public static void main(String[] args) throws IOException, BackendException {
+    public static void main(String[] args) throws BackendException {
         String contactPoint = null;
         String keyspace = null;
 

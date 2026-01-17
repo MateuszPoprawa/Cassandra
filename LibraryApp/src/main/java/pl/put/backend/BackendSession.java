@@ -19,7 +19,7 @@ public class BackendSession {
 
 	private static final Logger logger = LoggerFactory.getLogger(BackendSession.class);
 
-	private Session session;
+	private final Session session;
 
 	public BackendSession(String contactPoint, String keyspace) throws BackendException {
 
@@ -56,7 +56,7 @@ public class BackendSession {
 		StringBuilder builder = new StringBuilder();
 		BoundStatement bs = new BoundStatement(SELECT_ALL_FROM_LIBRARY_DATA);
 
-		ResultSet rs = null;
+		ResultSet rs;
 
 		try {
 			rs = session.execute(bs);
