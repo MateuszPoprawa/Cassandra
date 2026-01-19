@@ -4,6 +4,8 @@ import com.datastax.driver.core.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.Scanner;
+
 /*
  * For error handling done right see: 
  * https://www.datastax.com/dev/blog/cassandra-error-handling-done-right
@@ -32,9 +34,10 @@ public class BackendSession {
 		prepareStatements();
 	}
 
+	private static final Scanner scanner = new Scanner(System.in);
+
 	private static PreparedStatement SELECT_ALL_FROM_LIBRARY_DATA;
-	private static PreparedStatement INSERT_INTO_LIBRARY_DATA;
-	private static PreparedStatement DELETE_ALL_FROM_LIBRARY_DATA;
+	private static PreparedStatement INSERT_BOOK;
 
 	private static final String LIBRARY_DATA_FORMAT = "- %-10s %-10s %-10s %-10s\n";
 
@@ -42,9 +45,8 @@ public class BackendSession {
 	private void prepareStatements() throws BackendException {
 		try {
 			SELECT_ALL_FROM_LIBRARY_DATA = session.prepare("SELECT * FROM library_data;");
-			INSERT_INTO_LIBRARY_DATA = session
-					.prepare("INSERT INTO library_data (library_name, library_location, author, book_name) VALUES (?, ?, ?, ?);");
-			DELETE_ALL_FROM_LIBRARY_DATA = session.prepare("TRUNCATE library_data;");
+			INSERT_BOOK = session
+					.prepare("INSERT INTO library_data (library_name, library_location, book_name, author, book_count) VALUES (?, ?, ?, ?, ?);");
 		} catch (Exception e) {
 			throw new BackendException("Could not prepare statements. " + e.getMessage() + ".", e);
 		}
@@ -76,9 +78,24 @@ public class BackendSession {
 		return builder.toString();
 	}
 
-	public void upsertBook(String library_name, String library_location, String author, String book_name) throws BackendException {
-		BoundStatement bs = new BoundStatement(INSERT_INTO_LIBRARY_DATA);
-		bs.bind(library_name, library_location, author, book_name);
+	public void upsertBook() throws BackendException {
+		System.out.println("Enter library: ");
+		String libraryName = scanner.nextLine();
+
+		System.out.println("Enter library location: ");
+		String libraryLocation = scanner.nextLine();
+
+		System.out.println("Enter book name: ");
+		String bookName = scanner.nextLine();
+
+		System.out.println("Enter author: ");
+		String author = scanner.nextLine();
+
+		System.out.println("Enter book count");
+		int bookCount = scanner.nextInt();
+
+		BoundStatement bs = new BoundStatement(INSERT_BOOK);
+		bs.bind(libraryName, libraryLocation, bookName, author, bookCount);
 
 		try {
 			session.execute(bs);
@@ -86,19 +103,7 @@ public class BackendSession {
 			throw new BackendException("Could not perform an upsert. " + e.getMessage() + ".", e);
 		}
 
-		logger.info("Book " + book_name + " upserted");
-	}
-
-	public void deleteAll() throws BackendException {
-		BoundStatement bs = new BoundStatement(DELETE_ALL_FROM_LIBRARY_DATA);
-
-		try {
-			session.execute(bs);
-		} catch (Exception e) {
-			throw new BackendException("Could not perform a delete operation. " + e.getMessage() + ".", e);
-		}
-
-		logger.info("All books deleted");
+        logger.info("Book {} upserted", bookName);
 	}
 
 	protected void finalize() {
