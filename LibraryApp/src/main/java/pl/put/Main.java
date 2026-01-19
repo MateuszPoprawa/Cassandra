@@ -2,6 +2,7 @@ package pl.put;
 
 import java.io.IOException;
 import java.util.Properties;
+import java.util.Scanner;
 
 import pl.put.backend.BackendException;
 import pl.put.backend.BackendSession;
@@ -26,14 +27,23 @@ public class Main {
 
         BackendSession session = new BackendSession(contactPoint, keyspace);
 
-        session.upsertBook("library1", "Poznań", "J.R.R. Tolkien", "The Lord of the Rings");
-        session.upsertBook("library1", "Poznań", "Frank Herbert", "Dune" );
+        Scanner scanner = new Scanner(System.in);
 
-        String output = session.selectAll();
-        System.out.println("Books: \n" + output);
+        while (true) {
+            showInfo();
+            int option = scanner.nextInt();
+            switch (option) {
+                case 0: System.exit(0);
+                case 1: session.upsertBook();
+                default: break;
+            }
+        }
 
-        session.deleteAll();
+    }
 
-        System.exit(0);
+    private static void showInfo() {
+        System.out.println("Choose option: ");
+        System.out.println("0 - exit");
+        System.out.println("1 - Insert book");
     }
 }

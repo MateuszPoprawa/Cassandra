@@ -11,5 +11,5 @@ book_count int,
 author text,
 rented_date map<text,timestamp>,
 due_date map<text,timestamp>,
-PRIMARY KEY ((library_name, library_location), author, book_name)
+PRIMARY KEY ((library_name, library_location), book_name, author)
 ); 
