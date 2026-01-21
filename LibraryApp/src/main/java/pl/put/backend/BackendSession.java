@@ -37,14 +37,17 @@ public class BackendSession {
 	private static final Scanner scanner = new Scanner(System.in);
 
 	private static PreparedStatement SELECT_ALL_FROM_LIBRARY_DATA;
+	private static PreparedStatement SELECT_BOOK;
 	private static PreparedStatement INSERT_BOOK;
 
-	private static final String LIBRARY_DATA_FORMAT = "- %-10s %-10s %-10s %-10s\n";
+	private static final String LIBRARY_DATA_FORMAT = "- %-10s %-10s %-10s %-10s %-10s\n";
 
 
 	private void prepareStatements() throws BackendException {
 		try {
 			SELECT_ALL_FROM_LIBRARY_DATA = session.prepare("SELECT * FROM library_data;");
+			SELECT_BOOK = session.prepare("SELECT * FROM library_data " +
+					"WHERE library_name=? AND library_location=? AND book_name=?;");
 			INSERT_BOOK = session
 					.prepare("INSERT INTO library_data (library_name, library_location, book_name, author, book_count) VALUES (?, ?, ?, ?, ?);");
 		} catch (Exception e) {
@@ -71,14 +74,52 @@ public class BackendSession {
 			String library_location = row.getString("library_location");
 			String author = row.getString("author");
 			String book_name = row.getString("book_name");
+			int book_count = row.getInt("book_count");
 
-			builder.append(String.format(LIBRARY_DATA_FORMAT, library_name, library_location, author, book_name));
+			builder.append(String.format(LIBRARY_DATA_FORMAT, library_name, library_location, author, book_name, book_count));
 		}
 
 		return builder.toString();
 	}
 
+	public void selectBook() throws BackendException {
+		StringBuilder builder = new StringBuilder();
+
+		System.out.println("Enter library name: ");
+		String libraryName = scanner.nextLine();
+
+		System.out.println("Enter library location: ");
+		String libraryLocation = scanner.nextLine();
+
+		System.out.println("Enter book name: ");
+		String bookName = scanner.nextLine();
+
+		BoundStatement bs = new BoundStatement(SELECT_BOOK);
+		bs.bind(libraryName, libraryLocation, bookName);
+
+		ResultSet rs;
+
+		try {
+			rs = session.execute(bs);
+		} catch (Exception e) {
+			throw new BackendException("Could not perform a query. " + e.getMessage() + ".", e);
+		}
+
+		for (Row row : rs) {
+			String library_name = row.getString("library_name");
+			String library_location = row.getString("library_location");
+			String author = row.getString("author");
+			String book_name = row.getString("book_name");
+			int book_count = row.getInt("book_count");
+
+			builder.append(String.format(LIBRARY_DATA_FORMAT, library_name, library_location, author, book_name, book_count));
+		}
+
+		System.out.println(builder);
+	}
+
 	public void upsertBook() throws BackendException {
+
 		System.out.println("Enter library: ");
 		String libraryName = scanner.nextLine();
 
@@ -102,6 +143,8 @@ public class BackendSession {
 		} catch (Exception e) {
 			throw new BackendException("Could not perform an upsert. " + e.getMessage() + ".", e);
 		}
+
+		scanner.nextLine();
 
         logger.info("Book {} upserted", bookName);
 	}

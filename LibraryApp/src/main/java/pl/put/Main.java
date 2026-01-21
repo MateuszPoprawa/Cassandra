@@ -34,7 +34,8 @@ public class Main {
             int option = scanner.nextInt();
             switch (option) {
                 case 0: System.exit(0);
-                case 1: session.upsertBook();
+                case 1: session.upsertBook(); break;
+                case 2: session.selectBook(); break;
                 default: break;
             }
         }
@@ -45,5 +46,6 @@ public class Main {
         System.out.println("Choose option: ");
         System.out.println("0 - exit");
         System.out.println("1 - Insert book");
+        System.out.println("2 - Select book");
     }
 }
