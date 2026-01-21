@@ -36,16 +36,16 @@ public class BackendSession {
 
 	private static final Scanner scanner = new Scanner(System.in);
 
-	private static PreparedStatement SELECT_ALL_FROM_LIBRARY_DATA;
+	private static PreparedStatement SELECT_BOOKS_FROM_LIBRARY;
 	private static PreparedStatement SELECT_BOOK;
 	private static PreparedStatement INSERT_BOOK;
 
-	private static final String LIBRARY_DATA_FORMAT = "- %-10s %-10s %-10s %-10s %-10s\n";
+	private static final String LIBRARY_DATA_FORMAT = "%-15s %-16s %-15s %-15s %-15s\n";
 
 
 	private void prepareStatements() throws BackendException {
 		try {
-			SELECT_ALL_FROM_LIBRARY_DATA = session.prepare("SELECT * FROM library_data;");
+			SELECT_BOOKS_FROM_LIBRARY = session.prepare("SELECT * FROM library_data WHERE library_name=? AND library_location=?;");
 			SELECT_BOOK = session.prepare("SELECT * FROM library_data " +
 					"WHERE library_name=? AND library_location=? AND book_name=?;");
 			INSERT_BOOK = session
@@ -57,29 +57,19 @@ public class BackendSession {
 		logger.info("Statements prepared");
 	}
 
-	public String selectAll() throws BackendException {
+	public void selectBooksFromLibrary() throws BackendException {
 		StringBuilder builder = new StringBuilder();
-		BoundStatement bs = new BoundStatement(SELECT_ALL_FROM_LIBRARY_DATA);
 
-		ResultSet rs;
+		System.out.println("Enter library name: ");
+		String libraryName = scanner.nextLine();
 
-		try {
-			rs = session.execute(bs);
-		} catch (Exception e) {
-			throw new BackendException("Could not perform a query. " + e.getMessage() + ".", e);
-		}
+		System.out.println("Enter library location: ");
+		String libraryLocation = scanner.nextLine();
 
-		for (Row row : rs) {
-			String library_name = row.getString("library_name");
-			String library_location = row.getString("library_location");
-			String author = row.getString("author");
-			String book_name = row.getString("book_name");
-			int book_count = row.getInt("book_count");
+		BoundStatement bs = new BoundStatement(SELECT_BOOKS_FROM_LIBRARY);
+		bs.bind(libraryName, libraryLocation);
 
-			builder.append(String.format(LIBRARY_DATA_FORMAT, library_name, library_location, author, book_name, book_count));
-		}
-
-		return builder.toString();
+		showResults(builder, bs);
 	}
 
 	public void selectBook() throws BackendException {
@@ -97,25 +87,7 @@ public class BackendSession {
 		BoundStatement bs = new BoundStatement(SELECT_BOOK);
 		bs.bind(libraryName, libraryLocation, bookName);
 
-		ResultSet rs;
-
-		try {
-			rs = session.execute(bs);
-		} catch (Exception e) {
-			throw new BackendException("Could not perform a query. " + e.getMessage() + ".", e);
-		}
-
-		for (Row row : rs) {
-			String library_name = row.getString("library_name");
-			String library_location = row.getString("library_location");
-			String author = row.getString("author");
-			String book_name = row.getString("book_name");
-			int book_count = row.getInt("book_count");
-
-			builder.append(String.format(LIBRARY_DATA_FORMAT, library_name, library_location, author, book_name, book_count));
-		}
-
-		System.out.println(builder);
+		showResults(builder, bs);
 	}
 
 	public void upsertBook() throws BackendException {
@@ -157,6 +129,30 @@ public class BackendSession {
 		} catch (Exception e) {
 			logger.error("Could not close existing cluster", e);
 		}
+	}
+
+	private void showResults(StringBuilder builder, BoundStatement bs) throws BackendException {
+		ResultSet rs;
+
+		try {
+			rs = session.execute(bs);
+		} catch (Exception e) {
+			throw new BackendException("Could not perform a query. " + e.getMessage() + ".", e);
+		}
+
+		builder.append(String.format(LIBRARY_DATA_FORMAT, "LIBRARY_NAME", "LIBRARY_LOCATION", "AUTHOR", "BOOK_NAME", "BOOK_COUNT"));
+
+		for (Row row : rs) {
+			String library_name = row.getString("library_name");
+			String library_location = row.getString("library_location");
+			String author = row.getString("author");
+			String book_name = row.getString("book_name");
+			int book_count = row.getInt("book_count");
+
+			builder.append(String.format(LIBRARY_DATA_FORMAT, library_name, library_location, author, book_name, book_count));
+		}
+
+		System.out.println(builder);
 	}
 
 }
