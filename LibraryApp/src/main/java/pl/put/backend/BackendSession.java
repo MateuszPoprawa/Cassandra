@@ -40,16 +40,14 @@ public class BackendSession {
 	private static PreparedStatement SELECT_BOOK;
 	private static PreparedStatement INSERT_BOOK;
 
-	private static final String LIBRARY_DATA_FORMAT = "%-15s %-16s %-15s %-15s %-15s\n";
+	private static final String LIBRARY_DATA_FORMAT = "%-15s %-15s %-15s\n";
 
 
 	private void prepareStatements() throws BackendException {
 		try {
-			SELECT_BOOKS_FROM_LIBRARY = session.prepare("SELECT * FROM library_data WHERE library_name=? AND library_location=?;");
-			SELECT_BOOK = session.prepare("SELECT * FROM library_data " +
-					"WHERE library_name=? AND library_location=? AND book_name=?;");
-			INSERT_BOOK = session
-					.prepare("INSERT INTO library_data (library_name, library_location, book_name, author, book_count) VALUES (?, ?, ?, ?, ?);");
+			SELECT_BOOKS_FROM_LIBRARY = session.prepare("SELECT * FROM library_data WHERE library_id=?;");
+			SELECT_BOOK = session.prepare("SELECT * FROM library_data " + "WHERE library_id=? AND book_id=?;");
+			INSERT_BOOK = session.prepare("INSERT INTO library_data (library_id, book_id, book_count) VALUES (?, ?, ?);");
 		} catch (Exception e) {
 			throw new BackendException("Could not prepare statements. " + e.getMessage() + ".", e);
 		}
@@ -60,14 +58,11 @@ public class BackendSession {
 	public void selectBooksFromLibrary() throws BackendException {
 		StringBuilder builder = new StringBuilder();
 
-		System.out.println("Enter library name: ");
-		String libraryName = scanner.nextLine();
-
-		System.out.println("Enter library location: ");
-		String libraryLocation = scanner.nextLine();
+		System.out.println("Enter library id: ");
+		String libraryId = scanner.nextLine();
 
 		BoundStatement bs = new BoundStatement(SELECT_BOOKS_FROM_LIBRARY);
-		bs.bind(libraryName, libraryLocation);
+		bs.bind(libraryId);
 
 		showResults(builder, bs);
 	}
@@ -75,40 +70,31 @@ public class BackendSession {
 	public void selectBook() throws BackendException {
 		StringBuilder builder = new StringBuilder();
 
-		System.out.println("Enter library name: ");
-		String libraryName = scanner.nextLine();
+		System.out.println("Enter library id: ");
+		String libraryId = scanner.nextLine();
 
-		System.out.println("Enter library location: ");
-		String libraryLocation = scanner.nextLine();
-
-		System.out.println("Enter book name: ");
-		String bookName = scanner.nextLine();
+		System.out.println("Enter book id: ");
+		String bookId = scanner.nextLine();
 
 		BoundStatement bs = new BoundStatement(SELECT_BOOK);
-		bs.bind(libraryName, libraryLocation, bookName);
+		bs.bind(libraryId, bookId);
 
 		showResults(builder, bs);
 	}
 
 	public void upsertBook() throws BackendException {
 
-		System.out.println("Enter library: ");
-		String libraryName = scanner.nextLine();
+		System.out.println("Enter library id: ");
+		String libraryId = scanner.nextLine();
 
-		System.out.println("Enter library location: ");
-		String libraryLocation = scanner.nextLine();
-
-		System.out.println("Enter book name: ");
-		String bookName = scanner.nextLine();
-
-		System.out.println("Enter author: ");
-		String author = scanner.nextLine();
+		System.out.println("Enter book id: ");
+		String bookId = scanner.nextLine();
 
 		System.out.println("Enter book count");
 		int bookCount = scanner.nextInt();
 
 		BoundStatement bs = new BoundStatement(INSERT_BOOK);
-		bs.bind(libraryName, libraryLocation, bookName, author, bookCount);
+		bs.bind(libraryId, bookId, bookCount);
 
 		try {
 			session.execute(bs);
@@ -118,7 +104,7 @@ public class BackendSession {
 
 		scanner.nextLine();
 
-        logger.info("Book {} upserted", bookName);
+        logger.info("Book {} upserted", bookId);
 	}
 
 	protected void finalize() {
@@ -140,16 +126,14 @@ public class BackendSession {
 			throw new BackendException("Could not perform a query. " + e.getMessage() + ".", e);
 		}
 
-		builder.append(String.format(LIBRARY_DATA_FORMAT, "LIBRARY_NAME", "LIBRARY_LOCATION", "AUTHOR", "BOOK_NAME", "BOOK_COUNT"));
+		builder.append(String.format(LIBRARY_DATA_FORMAT, "LIBRARY_ID", "BOOK_ID", "BOOK_COUNT"));
 
 		for (Row row : rs) {
-			String library_name = row.getString("library_name");
-			String library_location = row.getString("library_location");
-			String author = row.getString("author");
-			String book_name = row.getString("book_name");
+			String library_name = row.getString("library_id");
+			String book_name = row.getString("book_id");
 			int book_count = row.getInt("book_count");
 
-			builder.append(String.format(LIBRARY_DATA_FORMAT, library_name, library_location, author, book_name, book_count));
+			builder.append(String.format(LIBRARY_DATA_FORMAT, library_id, book_id, book_count));
 		}
 
 		System.out.println(builder);
