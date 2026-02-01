@@ -5,6 +5,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Scanner;
+import java.time.LocalDateTime;
 
 /*
  * For error handling done right see: 
@@ -48,6 +49,7 @@ public class BackendSession {
 			SELECT_BOOKS_FROM_LIBRARY = session.prepare("SELECT * FROM library_data WHERE library_id=?;");
 			SELECT_BOOK = session.prepare("SELECT * FROM library_data " + "WHERE library_id=? AND book_id=?;");
 			INSERT_BOOK = session.prepare("INSERT INTO library_data (library_id, book_id, book_count) VALUES (?, ?, ?);");
+			RENT_BOOK = session.prepare("UPDATE library_data SET rented_date = rented_date + {'?':'?'}, due_date = due_date + {'?':'?'} WHERE library_id=? AND book_id=?;");
 		} catch (Exception e) {
 			throw new BackendException("Could not prepare statements. " + e.getMessage() + ".", e);
 		}
@@ -96,15 +98,45 @@ public class BackendSession {
 		BoundStatement bs = new BoundStatement(INSERT_BOOK);
 		bs.bind(libraryId, bookId, bookCount);
 
-		try {
-			session.execute(bs);
-		} catch (Exception e) {
-			throw new BackendException("Could not perform an upsert. " + e.getMessage() + ".", e);
-		}
+		executeQuery(bs);
 
 		scanner.nextLine();
 
         logger.info("Book {} upserted", bookId);
+	}
+
+	public void rentBook(){
+		System.out.println("Enter user id: ");
+		String userId = scanner.nextLine();
+
+		System.out.println("Enter library id: ");
+		String libraryId = scanner.nextLine();
+
+		System.out.println("Enter book id: ");
+		String bookId = scanner.nextLine();
+
+		BoundStatement bs = new BoundStatement(SELECT_BOOK);
+		bs.bind(libraryId, bookId);
+		ResultSet rs;
+		rs.executeQuery();
+
+		bs = new BoundStatement(userId, LocalDateTime.now());
+		bs.bind(userId, LocalDateTime.now().toString(), userId, LocalDateTime.now().toString(), library_id, book_id);
+		executeQuery(bs);
+		verify(libraryId, bookId);
+	}
+
+	protected void verify(String libraryId, String bookId){
+		boolean isOk = true;
+		do{
+			BoundStatement bs = new BoundStatement(SELECT_BOOK);
+			bs.bind(libraryId, bookId);
+			ResultSet rs;
+			rs = executeQuery(bs);
+			for (Row row : rs){
+				break;
+			}
+		}while(!isOk);
 	}
 
 	protected void finalize() {
@@ -120,11 +152,7 @@ public class BackendSession {
 	private void showResults(StringBuilder builder, BoundStatement bs) throws BackendException {
 		ResultSet rs;
 
-		try {
-			rs = session.execute(bs);
-		} catch (Exception e) {
-			throw new BackendException("Could not perform a query. " + e.getMessage() + ".", e);
-		}
+		rs = executeQuery(bs);
 
 		builder.append(String.format(LIBRARY_DATA_FORMAT, "LIBRARY_ID", "BOOK_ID", "BOOK_COUNT"));
 
@@ -137,6 +165,16 @@ public class BackendSession {
 		}
 
 		System.out.println(builder);
+	}
+
+	private ResultSet executeQuery(BoundStatement bs){
+		ResultSet rs;
+		try {
+			rs = session.execute(bs);
+			Return rs;
+		} catch (Exception e) {
+			throw new BackendException("Could not perform a query. " + e.getMessage() + ".", e);
+		}
 	}
 
 }
