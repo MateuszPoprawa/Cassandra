@@ -62,8 +62,8 @@ public class BackendSession {
 			RENT_BOOK = session.prepare("UPDATE library_data SET rented_date = rented_date + ?, due_date = due_date + ? WHERE library_id=? AND book_id=?;");
 			RETURN_BOOK = session.prepare("UPDATE library_data SET queue = queue - ?, rented_date = rented_date - ?, due_date = due_date - ? WHERE library_id=? AND book_id=?;");
 			QUEUE_BOOK = session.prepare("UPDATE library_data SET queue = queue + ? WHERE library_id=? AND book_id=?;");
-			DEQUEUE_BOOK = session.prepare("UPDATE library_data SET queue = queue - ?,  rented_date = rented_date + ?, due_date = due_date + ? WHERE library_id=? AND book_id=? AND queue CONTAINS KEY ?	;");
-			UNRENT_BOOK = session.prepare("UPDATE library_data SET queue = queue + ?,  rented_date = rented_date - ?, due_date = due_date - ? WHERE library_id=? AND book_id=? AND rented_date CONTAINS KEY ?;");
+			DEQUEUE_BOOK = session.prepare("UPDATE library_data SET queue = queue - ?,  rented_date = rented_date + ?, due_date = due_date + ? WHERE library_id=? AND book_id=? IF queue CONTAINS KEY ?	;");
+			UNRENT_BOOK = session.prepare("UPDATE library_data SET queue = queue + ?,  rented_date = rented_date - ?, due_date = due_date - ? WHERE library_id=? AND book_id=? IF rented_date CONTAINS KEY ?;");
 		} catch (Exception e) {
 			throw new BackendException("Could not prepare statements. " + e.getMessage() + ".", e);
 		}
@@ -118,8 +118,17 @@ public class BackendSession {
 			System.out.println("This book has already been rented by this user.");
 			return isRented;
 		}
+		for(Row row : rs){
+			int bookCount = row.getInt("book_count");
+			Map<String, Date> rented = row.getMap("rented_date", String.class, Date.class);
 
-		rentBookCassandra(userId, libraryId, bookId);
+			int diff = bookCount - rented.size();
+			if(diff > 0){
+				rentBookCassandra(userId, libraryId, bookId);
+			}else{
+				queueBookCassandra(userId, libraryId, bookId);
+			}
+		}
 		rs = validate(libraryId, bookId);
 		isRented = isBookRented(userId, rs);
 		switch(isRented){
@@ -353,7 +362,7 @@ public class BackendSession {
 	}
 
 	protected ResultSet unrentBookCassandra(String userId, String libraryId, String bookId) throws BackendException{
-		BoundStatement bs = new BoundStatement(DEQUEUE_BOOK);
+		BoundStatement bs = new BoundStatement(UNRENT_BOOK);
 		Set<String> mySet = new HashSet<>();
 		mySet.add(userId);
 		Map<String, Date> myMap = new HashMap<>();
