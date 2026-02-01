@@ -122,7 +122,7 @@ public class BackendSession {
 			return;
 		}
 
-		rentBook(userId, libraryId, bookId);
+		rentBookCassandra(userId, libraryId, bookId);
 		verify(libraryId, bookId);
 	}
 
