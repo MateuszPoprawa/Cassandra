@@ -222,8 +222,8 @@ public class BackendSession {
 
 	protected ResultSet rentBookCassandra(String userId, String libraryId, String bookId) throws BackendException{
 		BoundStatement bs = new BoundStatement(RENT_BOOK);
-		Map<String, LocalDateTime> myMap = new HashMap<>();
-		myMap.put(userId, LocalDateTime.now());
+		Map<String, long> myMap = new HashMap<>();
+		myMap.put(userId, System.currentTimeMillis());
 		bs.bind(myMap, myMap, libraryId, bookId);
 		ResultSet rs;
 		rs = executeQuery(bs);
@@ -242,8 +242,8 @@ public class BackendSession {
 
 	protected ResultSet queueBookCassandra(String userId, String libraryId, String bookId) throws BackendException{
 		BoundStatement bs = new BoundStatement(QUEUE_BOOK);
-		Map<String, LocalDateTime> myMap = new HashMap<>();
-		myMap.put(userId, LocalDateTime.now());
+		Map<String, long> myMap = new HashMap<>();
+		myMap.put(userId, System.currentTimeMillis());
 		bs.bind(myMap, libraryId, bookId);
 		ResultSet rs;
 		rs = executeQuery(bs);
