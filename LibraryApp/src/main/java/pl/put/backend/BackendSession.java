@@ -78,7 +78,7 @@ public class BackendSession {
 
 		ResultSet rs = selectBooksFromLibraryCassandra(libraryId);
 
-		showResults(builder, bs);
+		showResults(builder, rs);
 	}
 
 	public void selectBook() throws BackendException {
@@ -86,7 +86,7 @@ public class BackendSession {
 
 		String libraryId = getLibraryFromTerminal();
 
-		String bookId = getBookCountFromTerminal();
+		String bookId = getBookFromTerminal();
 
 		ResultSet rs = selectBookCassandra(libraryId, bookId);
 
@@ -97,7 +97,7 @@ public class BackendSession {
 
 		String libraryId = getLibraryFromTerminal();
 
-		String bookId = getBookCountFromTerminal();
+		String bookId = getBookFromTerminal();
 
 		int bookCount = getBookCountFromTerminal();
 
@@ -113,7 +113,7 @@ public class BackendSession {
 
 		String libraryId = getLibraryFromTerminal();
 
-		String bookId = getBookCountFromTerminal();
+		String bookId = getBookFromTerminal();
 
 		ResultSet rs = selectBookCassandra(libraryId, bookId);
 
@@ -133,7 +133,7 @@ public class BackendSession {
 
 		String libraryId = getLibraryFromTerminal();
 
-		String bookId = getBookCountFromTerminal();
+		String bookId = getBookFromTerminal();
 
 		ResultSet rs = selectBookCassandra(libraryId, bookId);
 
