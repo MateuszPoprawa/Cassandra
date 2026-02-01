@@ -50,7 +50,7 @@ public class BackendSession {
 	private static PreparedStatement QUEUE_BOOK;
 	private static PreparedStatement DEQUEUE_BOOK;
 
-	private static final String LIBRARY_DATA_FORMAT = "%-15s %-15s %-15s\n";
+	private static final String LIBRARY_DATA_FORMAT = "%-15s %-15s %-15s %-15s\n";
 
 
 	private void prepareStatements() throws BackendException {
@@ -181,14 +181,15 @@ public class BackendSession {
 
 	protected void showResults(StringBuilder builder, ResultSet rs) throws BackendException {
 
-		builder.append(String.format(LIBRARY_DATA_FORMAT, "LIBRARY_ID", "BOOK_ID", "BOOK_COUNT"));
+		builder.append(String.format(LIBRARY_DATA_FORMAT, "LIBRARY_ID", "BOOK_ID", "BOOK_COUNT", "TEST"));
 
 		for (Row row : rs) {
 			String libraryId = row.getString("library_id");
 			String bookId = row.getString("book_id");
 			int bookCount = row.getInt("book_count");
+			String test = row.getString("rented_date");
 
-			builder.append(String.format(LIBRARY_DATA_FORMAT, libraryId, bookId, bookCount));
+			builder.append(String.format(LIBRARY_DATA_FORMAT, libraryId, bookId, bookCount, test));
 		}
 
 		System.out.println(builder);
@@ -222,8 +223,8 @@ public class BackendSession {
 
 	protected ResultSet rentBookCassandra(String userId, String libraryId, String bookId) throws BackendException{
 		BoundStatement bs = new BoundStatement(RENT_BOOK);
-		Map<String, long> myMap = new HashMap<>();
-		myMap.put(userId, System.currentTimeMillis());
+		Map<String, Date> myMap = new HashMap<>();
+		myMap.put(userId, new Date());
 		bs.bind(myMap, myMap, libraryId, bookId);
 		ResultSet rs;
 		rs = executeQuery(bs);
@@ -242,8 +243,8 @@ public class BackendSession {
 
 	protected ResultSet queueBookCassandra(String userId, String libraryId, String bookId) throws BackendException{
 		BoundStatement bs = new BoundStatement(QUEUE_BOOK);
-		Map<String, long> myMap = new HashMap<>();
-		myMap.put(userId, System.currentTimeMillis());
+		Map<String, Date> myMap = new HashMap<>();
+		myMap.put(userId, new Date());
 		bs.bind(myMap, libraryId, bookId);
 		ResultSet rs;
 		rs = executeQuery(bs);
