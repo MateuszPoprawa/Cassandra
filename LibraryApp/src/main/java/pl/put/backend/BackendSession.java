@@ -122,9 +122,7 @@ public class BackendSession {
 			return;
 		}
 
-		BoundStatement bs = new BoundStatement(RENT_BOOK);
-		bs.bind(userId, LocalDateTime.now().toString(), userId, LocalDateTime.now().toString(), libraryId, bookId);
-		executeQuery(bs);
+		rentBook(userId, libraryId, bookId);
 		verify(libraryId, bookId);
 	}
 
