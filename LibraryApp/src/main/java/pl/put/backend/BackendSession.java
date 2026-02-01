@@ -50,7 +50,7 @@ public class BackendSession {
 	private static PreparedStatement QUEUE_BOOK;
 	private static PreparedStatement DEQUEUE_BOOK;
 
-	private static final String LIBRARY_DATA_FORMAT = "%-15s %-15s %-15s %-15s\n";
+	private static final String LIBRARY_DATA_FORMAT = "%-15s %-15s %-15s\n";
 
 
 	private void prepareStatements() throws BackendException {
@@ -181,15 +181,14 @@ public class BackendSession {
 
 	protected void showResults(StringBuilder builder, ResultSet rs) throws BackendException {
 
-		builder.append(String.format(LIBRARY_DATA_FORMAT, "LIBRARY_ID", "BOOK_ID", "BOOK_COUNT", "TEST"));
+		builder.append(String.format(LIBRARY_DATA_FORMAT, "LIBRARY_ID", "BOOK_ID", "BOOK_COUNT"));
 
 		for (Row row : rs) {
 			String libraryId = row.getString("library_id");
 			String bookId = row.getString("book_id");
 			int bookCount = row.getInt("book_count");
-			String test = row.getString("rented_date");
 
-			builder.append(String.format(LIBRARY_DATA_FORMAT, libraryId, bookId, bookCount, test));
+			builder.append(String.format(LIBRARY_DATA_FORMAT, libraryId, bookId, bookCount));
 		}
 
 		System.out.println(builder);
