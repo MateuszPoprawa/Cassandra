@@ -190,7 +190,7 @@ public class BackendSession {
 			if(rented.size() <= bookCount) continue;
 			int diff = rented.size() - bookCount;
 
-			for(int i = 0; i < diff, i++){
+			for(int i = 0; i < diff; i++){
 				String nextUser = null;
 				Date nextDate = null;
 				for(String userId : rented.keySet()){
@@ -227,7 +227,7 @@ public class BackendSession {
 			int diff = bookCount - rented.size();
 			diff = Math.min(diff, queue.size());
 
-			for(int i = 0; i < diff, i++){
+			for(int i = 0; i < diff; i++){
 				String nextUser = null;
 				Date nextDate = null;
 				for(String userId : queue.keySet()){
