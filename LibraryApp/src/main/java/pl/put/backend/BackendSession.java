@@ -121,7 +121,7 @@ public class BackendSession {
 
 		rentBookCassandra(userId, libraryId, bookId);
 		rs = validate(libraryId, bookId);
-		int isRented = isBookRented(userId, rs);
+		isRented = isBookRented(userId, rs);
 		switch(isRented){
 			case 0:
 				System.out.println("Book is not rented, a return has been made during execution.");
@@ -136,7 +136,7 @@ public class BackendSession {
 		return isRented;
 	}
 
-	public void returnBook() throws BackendException{
+	public int returnBook() throws BackendException{
 
 		String userId = getUserFromTerminal();
 		String libraryId = getLibraryFromTerminal();
@@ -151,13 +151,13 @@ public class BackendSession {
 				break;
 			case 1: 
 				returnBookCassandra(userId, libraryId, bookId);
-				validate();
+				validate(libraryId, bookId);
 				System.out.println("Book returned.");
 				break;
 			case 2: 
 				System.out.println("User removed from queue to get the book.");
 				returnBookCassandra(userId, libraryId, bookId);
-				validate();
+				validate(libraryId, bookId);
 				break;
 		}
 		return isRented;
@@ -184,8 +184,8 @@ public class BackendSession {
 			Map<String, Date> queue = row.getMap("queue", String.class, Date.class);
 			Map<String, Date> rented = row.getMap("rented_date", String.class, Date.class);
 			int bookCount = row.getInt("book_count");
-			String libraryId = row.get("library_id");
-			String bookId = row.get("book_id");
+			String libraryId = row.getString("library_id");
+			String bookId = row.getString("book_id");
 
 			if(rented.size() <= bookCount) continue;
 			int diff = rented.size() - bookCount;
@@ -200,7 +200,7 @@ public class BackendSession {
 						nextDate = date;
 						continue;
 					}
-					if(date > nextDate){
+					if(date.after(nextDate)){
 						nextUser = userId;
 						nextDate = date;
 					}
@@ -219,8 +219,8 @@ public class BackendSession {
 			Map<String, Date> queue = row.getMap("queue", String.class, Date.class);
 			Map<String, Date> rented = row.getMap("rented_date", String.class, Date.class);
 			int bookCount = row.getInt("book_count");
-			String libraryId = row.get("library_id");
-			String bookId = row.get("book_id");
+			String libraryId = row.getString("library_id");
+			String bookId = row.getString("book_id");
 
 			if(rented.size() >= bookCount) continue;
 
@@ -237,7 +237,7 @@ public class BackendSession {
 						nextDate = date;
 						continue;
 					}
-					if(date < nextDate){
+					if(date.before(nextDate)){
 						nextUser = userId;
 						nextDate = date;
 					}
