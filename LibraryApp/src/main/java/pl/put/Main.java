@@ -39,7 +39,7 @@ public class Main {
                 case 3: session.selectBooksFromLibrary(); break;
                 case 4: session.selectBook(); break;
                 case 5: session.selectBook(); break;
-                case 6: session.selectBook(); break;
+                case 6: session.rentBook(); break;
                 case 7: session.selectBook(); break;
                 default: break;
             }
