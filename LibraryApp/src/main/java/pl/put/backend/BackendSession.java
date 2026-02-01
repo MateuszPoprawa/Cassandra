@@ -40,6 +40,10 @@ public class BackendSession {
 	private static PreparedStatement SELECT_BOOKS_FROM_LIBRARY;
 	private static PreparedStatement SELECT_BOOK;
 	private static PreparedStatement INSERT_BOOK;
+	private static PreparedStatement RENT_BOOK;
+	private static PreparedStatement RETURN_BOOK;
+	private static PreparedStatement QUEUE_BOOK;
+	private static PreparedStatement DEQUEUE_BOOK;
 
 	private static final String LIBRARY_DATA_FORMAT = "%-15s %-15s %-15s\n";
 
@@ -50,6 +54,9 @@ public class BackendSession {
 			SELECT_BOOK = session.prepare("SELECT * FROM library_data " + "WHERE library_id=? AND book_id=?;");
 			INSERT_BOOK = session.prepare("INSERT INTO library_data (library_id, book_id, book_count) VALUES (?, ?, ?);");
 			RENT_BOOK = session.prepare("UPDATE library_data SET rented_date = rented_date + {'?':'?'}, due_date = due_date + {'?':'?'} WHERE library_id=? AND book_id=?;");
+			RETURN_BOOK = session.prepare("UPDATE library_data SET rented_date = rented_date - {'?'}, due_date = due_date - {'?'} WHERE library_id=? AND book_id=?;");
+			QUEUE_BOOK = session.prepare("UPDATE library_data SET queue = queue + {'?':'?'} WHERE library_id=? AND book_id=?;");
+			DEQUEUE_BOOK = session.prepare("UPDATE library_data SET queue = queue - {'?'} WHERE library_id=? AND book_id=?;");
 		} catch (Exception e) {
 			throw new BackendException("Could not prepare statements. " + e.getMessage() + ".", e);
 		}
@@ -106,8 +113,7 @@ public class BackendSession {
 	}
 
 	public void rentBook(){
-		System.out.println("Enter user id: ");
-		String userId = scanner.nextLine();
+		String userId = getUserFromTerminal();
 
 		System.out.println("Enter library id: ");
 		String libraryId = scanner.nextLine();
@@ -115,15 +121,34 @@ public class BackendSession {
 		System.out.println("Enter book id: ");
 		String bookId = scanner.nextLine();
 
-		BoundStatement bs = new BoundStatement(SELECT_BOOK);
-		bs.bind(libraryId, bookId);
-		ResultSet rs;
-		rs.executeQuery();
+		ResultSet rs = selectBook(libraryId, bookId);
 
-		bs = new BoundStatement(userId, LocalDateTime.now());
-		bs.bind(userId, LocalDateTime.now().toString(), userId, LocalDateTime.now().toString(), library_id, book_id);
+		if(isBookRented(userId, rs)){
+			System.out.println("This book has already been rented by this user.");
+			return;
+		}
+
+		BoundStatement bs = new BoundStatement(userId, LocalDateTime.now());
+		bs.bind(userId, LocalDateTime.now().toString(), userId, LocalDateTime.now().toString(), libraryId, bookId);
 		executeQuery(bs);
 		verify(libraryId, bookId);
+	}
+
+	public void returnBook(){
+		String userId = getUserFromTerminal();
+
+		System.out.println("Enter library id: ");
+		String libraryId = scanner.nextLine();
+
+		System.out.println("Enter book id: ");
+		String bookId = scanner.nextLine();
+
+		ResultSet rs = selectBook(libraryId, bookId);
+
+		if(!isBookRented(userId, rs)){
+			System.out.println("This book has not been rented yet by this user.");
+			return;
+		}
 	}
 
 	protected void verify(String libraryId, String bookId){
@@ -134,8 +159,8 @@ public class BackendSession {
 			ResultSet rs;
 			rs = executeQuery(bs);
 			for (Row row : rs){
-				//check if there are too many rented.
-				//check if the queue can move forward
+				//TODO check if there are too many rented.
+				//TODO check if the queue can move forward
 
 				break;
 			}
@@ -143,7 +168,13 @@ public class BackendSession {
 	}
 
 	protected void moveQueue(Row row){
+		//TODO
 		return;
+	}
+
+	protected boolean isBookRented(String userId, ResultSet rs){
+		//TODO
+		return true;
 	}
 
 	protected void finalize() {
@@ -156,7 +187,7 @@ public class BackendSession {
 		}
 	}
 
-	private void showResults(StringBuilder builder, BoundStatement bs) throws BackendException {
+	protected void showResults(StringBuilder builder, BoundStatement bs) throws BackendException {
 		ResultSet rs;
 
 		rs = executeQuery(bs);
@@ -164,24 +195,56 @@ public class BackendSession {
 		builder.append(String.format(LIBRARY_DATA_FORMAT, "LIBRARY_ID", "BOOK_ID", "BOOK_COUNT"));
 
 		for (Row row : rs) {
-			String library_id = row.getString("library_id");
-			String book_id = row.getString("book_id");
-			int book_count = row.getInt("book_count");
+			String libraryId = row.getString("library_id");
+			String bookId = row.getString("book_id");
+			int bookCount = row.getInt("book_count");
 
-			builder.append(String.format(LIBRARY_DATA_FORMAT, library_id, book_id, book_count));
+			builder.append(String.format(LIBRARY_DATA_FORMAT, libraryId, bookId, bookCount));
 		}
 
 		System.out.println(builder);
 	}
 
-	private ResultSet executeQuery(BoundStatement bs){
+	protected ResultSet selectBook(String libraryId, String bookId){
+		BoundStatement bs = new BoundStatement(SELECT_BOOK);
+		bs.bind(libraryId, bookId);
+		ResultSet rs;
+		rs.executeQuery();
+		return rs;
+	}
+
+	protected ResultSet executeQuery(BoundStatement bs){
 		ResultSet rs;
 		try {
 			rs = session.execute(bs);
-			Return rs;
+			return rs;
 		} catch (Exception e) {
 			throw new BackendException("Could not perform a query. " + e.getMessage() + ".", e);
 		}
+	}
+
+	protected String getUserFromTerminal(){
+		System.out.println("Enter user id: ");
+		String userId = scanner.nextLine();
+		return userId;
+	}
+
+	protected String getLibraryFromTerminal(){
+		System.out.println("Enter library id: ");
+		String LibraryId = scanner.nextLine();
+		return LibraryId;
+	}
+
+	protected String getBookFromTerminal(){
+		System.out.println("Enter book id: ");
+		String bookId = scanner.nextLine();
+		return bookId;
+	}
+
+	protected int getBookCountFromTerminal(){
+		System.out.println("Enter book count: ");
+		int bookCount = scanner.nextInt();
+		return bookCount;
 	}
 
 }

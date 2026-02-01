@@ -40,7 +40,7 @@ public class Main {
                 case 4: session.selectBook(); break;
                 case 5: session.selectBook(); break;
                 case 6: session.rentBook(); break;
-                case 7: session.selectBook(); break;
+                case 7: session.returnBook(); break;
                 default: break;
             }
         }
