@@ -60,7 +60,7 @@ public class BackendSession {
 			SELECT_BOOK = session.prepare("SELECT * FROM library_data " + "WHERE library_id=? AND book_id=?;");
 			INSERT_BOOK = session.prepare("INSERT INTO library_data (library_id, book_id, book_count) VALUES (?, ?, ?);");
 			RENT_BOOK = session.prepare("UPDATE library_data SET rented_date = rented_date + ?, due_date = due_date + ? WHERE library_id=? AND book_id=?;");
-			RETURN_BOOK = session.prepare("UPDATE library_data SET rented_date = rented_date - ?, due_date = due_date - ? WHERE library_id=? AND book_id=?;");
+			RETURN_BOOK = session.prepare("UPDATE library_data SET queue = queue - ?, rented_date = rented_date - ?, due_date = due_date - ? WHERE library_id=? AND book_id=?;");
 			QUEUE_BOOK = session.prepare("UPDATE library_data SET queue = queue + ? WHERE library_id=? AND book_id=?;");
 			DEQUEUE_BOOK = session.prepare("UPDATE library_data SET queue = queue - ?,  rented_date = rented_date + ?, due_date = due_date + ? WHERE library_id=? AND book_id=? AND containsKey(queue, ?);");
 			UNRENT_BOOK = session.prepare("UPDATE library_data SET queue = queue + ?,  rented_date = rented_date - ?, due_date = due_date - ? WHERE library_id=? AND book_id=? AND containsKey(rented_date, ?);");
@@ -74,33 +74,28 @@ public class BackendSession {
 	//---------------------------HANDLING INTERFACE------------------------------------------------------
 
 	public void selectBooksFromLibrary() throws BackendException {
-		StringBuilder builder = new StringBuilder();
 
 		String libraryId = getLibraryFromTerminal();
 
 		ResultSet rs = selectBooksFromLibraryCassandra(libraryId);
 
-		showResults(builder, rs);
+		showResults(rs);
 	}
 
 	public void selectBook() throws BackendException {
-		StringBuilder builder = new StringBuilder();
 
 		String libraryId = getLibraryFromTerminal();
-
 		String bookId = getBookFromTerminal();
 
 		ResultSet rs = selectBookCassandra(libraryId, bookId);
 
-		showResults(builder, rs);
+		showResults(rs);
 	}
 
 	public void upsertBook() throws BackendException {
 
 		String libraryId = getLibraryFromTerminal();
-
 		String bookId = getBookFromTerminal();
-
 		int bookCount = getBookCountFromTerminal();
 
 		upsertBookCassandra(libraryId, bookId, bookCount);
@@ -111,10 +106,9 @@ public class BackendSession {
 	}
 
 	public int rentBook() throws BackendException{
+
 		String userId = getUserFromTerminal();
-
 		String libraryId = getLibraryFromTerminal();
-
 		String bookId = getBookFromTerminal();
 
 		ResultSet rs = selectBookCassandra(libraryId, bookId);
@@ -143,18 +137,30 @@ public class BackendSession {
 	}
 
 	public void returnBook() throws BackendException{
+
 		String userId = getUserFromTerminal();
-
 		String libraryId = getLibraryFromTerminal();
-
 		String bookId = getBookFromTerminal();
 
 		ResultSet rs = selectBookCassandra(libraryId, bookId);
 
-		if(!isBookRented(userId, rs)){
-			System.out.println("This book has not been rented yet by this user.");
-			return;
+		int isRented = isBookRented(userId, rs);
+		switch(isRented){
+			case 0:
+				System.out.println("This book is not rented nor is this user in queue.");
+				break;
+			case 1: 
+				returnBookCassandra(userId, libraryId, bookId);
+				validate();
+				System.out.println("Book returned.");
+				break;
+			case 2: 
+				System.out.println("User removed from queue to get the book.");
+				returnBookCassandra(userId, libraryId, bookId);
+				validate();
+				break;
 		}
+		return isRented;
 	}
 
 	//-----------------------------------PRIVATE STUFF--------------------------------------------------------------------------
@@ -263,8 +269,8 @@ public class BackendSession {
 		}
 	}
 
-	protected void showResults(StringBuilder builder, ResultSet rs) throws BackendException {
-
+	protected void showResults(ResultSet rs) throws BackendException {
+		StringBuilder builder = new StringBuilder();
 		builder.append(String.format(LIBRARY_DATA_FORMAT, "LIBRARY_ID", "BOOK_ID", "BOOK_COUNT"));
 
 		for (Row row : rs) {
@@ -318,7 +324,7 @@ public class BackendSession {
 		BoundStatement bs = new BoundStatement(RETURN_BOOK);
 		Set<String> mySet = new HashSet<>();
 		mySet.add(userId);
-		bs.bind(mySet, mySet, libraryId, bookId);
+		bs.bind(mySet, mySet, mySet, libraryId, bookId);
 		ResultSet rs;
 		rs = executeQuery(bs);
 		return rs;
