@@ -134,9 +134,16 @@ public class BackendSession {
 			ResultSet rs;
 			rs = executeQuery(bs);
 			for (Row row : rs){
+				//check if there are too many rented.
+				//check if the queue can move forward
+
 				break;
 			}
 		}while(!isOk);
+	}
+
+	protected void moveQueue(Row row){
+		return;
 	}
 
 	protected void finalize() {
@@ -157,8 +164,8 @@ public class BackendSession {
 		builder.append(String.format(LIBRARY_DATA_FORMAT, "LIBRARY_ID", "BOOK_ID", "BOOK_COUNT"));
 
 		for (Row row : rs) {
-			String library_name = row.getString("library_id");
-			String book_name = row.getString("book_id");
+			String library_id = row.getString("library_id");
+			String book_id = row.getString("book_id");
 			int book_count = row.getInt("book_count");
 
 			builder.append(String.format(LIBRARY_DATA_FORMAT, library_id, book_id, book_count));
