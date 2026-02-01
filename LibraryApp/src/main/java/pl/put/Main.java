@@ -37,6 +37,10 @@ public class Main {
                 case 1: session.upsertBook(); break;
                 case 2: session.selectBook(); break;
                 case 3: session.selectBooksFromLibrary(); break;
+                case 4: session.selectBook(); break;
+                case 5: session.selectBook(); break;
+                case 6: session.rentBook(); break;
+                case 7: session.returnBook(); break;
                 default: break;
             }
         }
@@ -49,5 +53,9 @@ public class Main {
         System.out.println("1 - Insert book");
         System.out.println("2 - Select book");
         System.out.println("3 - Select books from library");
+        System.out.println("4 - Delete book");
+        System.out.println("5 - Update book");
+        System.out.println("6 - Rent book");
+        System.out.println("7 - Return book");
     }
 }

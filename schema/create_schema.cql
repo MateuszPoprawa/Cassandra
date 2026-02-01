@@ -4,12 +4,11 @@ CREATE KEYSPACE IF NOT EXISTS Library
 USE Library;
 
 CREATE TABLE Library_Data (
-library_name text,
-library_location text,
-book_name text,
+library_id text,
+book_id text,
 book_count int,
-author text,
+queue map<text,timestamp>,
 rented_date map<text,timestamp>,
 due_date map<text,timestamp>,
-PRIMARY KEY ((library_name, library_location), book_name, author)
+PRIMARY KEY ((library_id), book_id)
 ); 
