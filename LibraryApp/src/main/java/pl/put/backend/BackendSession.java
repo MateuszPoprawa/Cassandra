@@ -168,7 +168,7 @@ public class BackendSession {
 
 	protected boolean isBookRented(String userId, ResultSet rs) throws BackendException{
 		//TODO
-		return true;
+		return false;
 	}
 
 	protected void finalize() throws BackendException{
@@ -224,7 +224,7 @@ public class BackendSession {
 
 	protected ResultSet rentBookCassandra(String userId, String libraryId, String bookId) throws BackendException{
 		BoundStatement bs = new BoundStatement(RENT_BOOK);
-		Map<String, Date> myMap = new HashMap<>();
+		Map<String, LocalDateTime> myMap = new HashMap<>();
 		myMap.put(userId, LocalDateTime.now());
 		bs.bind(myMap, myMap, libraryId, bookId);
 		ResultSet rs;
@@ -244,7 +244,7 @@ public class BackendSession {
 
 	protected ResultSet queueBookCassandra(String userId, String libraryId, String bookId) throws BackendException{
 		BoundStatement bs = new BoundStatement(QUEUE_BOOK);
-		Map<String, Date> myMap = new HashMap<>();
+		Map<String, LocalDateTime> myMap = new HashMap<>();
 		myMap.put(userId, LocalDateTime.now());
 		bs.bind(myMap, libraryId, bookId);
 		ResultSet rs;
