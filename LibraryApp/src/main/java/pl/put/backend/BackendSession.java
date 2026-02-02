@@ -95,7 +95,7 @@ public class BackendSession {
 		showResults(rs);
 	}
 
-	public void checkBookStatus() throws BackendException {
+	public int checkBookStatus() throws BackendException {
 
 		String userId = getUserFromTerminal();
 		String libraryId = getLibraryFromTerminal();
@@ -200,7 +200,7 @@ public class BackendSession {
 
 	public int getConflictCount() throws BackendException{
 		int conflicts = errCount.get();
-		System.out.println("Conflict count is: " + conflicts.toString());
+		System.out.println("Conflict count is: " + conflicts);
 		return conflicts;
 	}
 
