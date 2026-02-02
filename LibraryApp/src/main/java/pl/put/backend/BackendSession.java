@@ -101,8 +101,7 @@ public class BackendSession {
 		String libraryId = getLibraryFromTerminal();
 		String bookId = getBookFromTerminal();
 
-		ResultSet rs = validate(libraryId, bookId);
-		Row row = rs.one();
+		Row row = validate(libraryId, bookId);
 
 		int isRented = isBookRented(userId, row);
 		switch(isRented){
@@ -231,7 +230,7 @@ public class BackendSession {
 		String libraryId = row.getString("library_id");
 		String bookId = row.getString("book_id");
 
-		if(rented.size() <= bookCount) continue;
+		if(rented.size() <= bookCount) return result;
 		int diff = rented.size() - bookCount;
 		addConflict(diff);
 		for(int i = 0; i < diff; i++){
@@ -263,7 +262,7 @@ public class BackendSession {
 		String libraryId = row.getString("library_id");
 		String bookId = row.getString("book_id");
 
-		if(rented.size() >= bookCount) continue;
+		if(rented.size() >= bookCount) return result;
 
 		int diff = bookCount - rented.size();
 		diff = Math.min(diff, queue.size());
