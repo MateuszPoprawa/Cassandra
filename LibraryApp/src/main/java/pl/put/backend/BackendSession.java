@@ -12,7 +12,7 @@ import java.util.HashSet;
 import java.util.Set;
 import java.util.HashMap;
 import java.util.Map;
-
+import java.util.concurrent.atomic.AtomicInteger;
 /*
  * For error handling done right see: 
  * https://www.datastax.com/dev/blog/cassandra-error-handling-done-right
@@ -30,6 +30,8 @@ public class BackendSession {
 
 	private final Session session;
 
+	private AtomicInteger errCount;
+
 	public BackendSession(String contactPoint, String keyspace) throws BackendException {
 
 		Cluster cluster = Cluster.builder().addContactPoint(contactPoint).withRetryPolicy(new CustomRetryPolicy()).build();
@@ -39,6 +41,7 @@ public class BackendSession {
 			throw new BackendException("Could not connect to the cluster. " + e.getMessage() + ".", e);
 		}
 		prepareStatements();
+		errCount = new AtomicInteger(0);
 	}
 
 	private static final Scanner scanner = new Scanner(System.in);
@@ -93,6 +96,29 @@ public class BackendSession {
 		showResults(rs);
 	}
 
+	public int checkBookStatus() throws BackendException {
+
+		String userId = getUserFromTerminal();
+		String libraryId = getLibraryFromTerminal();
+		String bookId = getBookFromTerminal();
+
+		ResultSet rs = validate(libraryId, bookId);
+
+		int isRented = isBookRented(userId, rs);
+		switch(isRented){
+			case 0:
+				System.out.println("Book is not rented.");
+				break;
+			case 1:
+				System.out.println("Book has been rented successfully.");
+				break;
+			case 2:
+				System.out.println("You're in the queue to get the book. Check back later.");
+				break;
+		}
+		return isRented;
+	}
+
 	public void upsertBook() throws BackendException {
 
 		String libraryId = getLibraryFromTerminal();
@@ -119,8 +145,17 @@ public class BackendSession {
 			System.out.println("This book has already been rented by this user.");
 			return isRented;
 		}
+		for(Row row : rs){
+			int bookCount = row.getInt("book_count");
+			Map<String, Date> rented = row.getMap("rented_date", String.class, Date.class);
 
-		rentBookCassandra(userId, libraryId, bookId);
+			int diff = bookCount - rented.size();
+			if(diff > 0){
+				rentBookCassandra(userId, libraryId, bookId);
+			}else{
+				queueBookCassandra(userId, libraryId, bookId);
+			}
+		}
 		rs = validate(libraryId, bookId);
 		isRented = isBookRented(userId, rs);
 		switch(isRented){
@@ -164,6 +199,13 @@ public class BackendSession {
 		return isRented;
 	}
 
+	public int getConflictCount() throws BackendException{
+		int conflicts = errCount.get();
+		System.out.println("Conflict count is: " + conflicts);
+		return conflicts;
+	}
+
+
 	//-----------------------------------PRIVATE STUFF--------------------------------------------------------------------------
 
 	protected ResultSet validate(String libraryId, String bookId) throws BackendException{
@@ -190,7 +232,7 @@ public class BackendSession {
 
 			if(rented.size() <= bookCount) continue;
 			int diff = rented.size() - bookCount;
-
+			addConflict(diff);
 			for(int i = 0; i < diff; i++){
 				String nextUser = null;
 				Date nextDate = null;
@@ -283,6 +325,10 @@ public class BackendSession {
 		}
 
 		System.out.println(builder);
+	}
+
+	protected int addConflict(int err){
+		return errCount.addAndGet(err);
 	}
 
 	//----------------------------CASSANDRA QUERY EXECUTION--------------------------------------------------------------------------
