@@ -1,6 +1,7 @@
 package pl.put.backend;
 
 import com.datastax.driver.core.*;
+import com.datastax.driver.core.exceptions.WriteTimeoutException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -31,7 +32,7 @@ public class BackendSession {
 
 	public BackendSession(String contactPoint, String keyspace) throws BackendException {
 
-		Cluster cluster = Cluster.builder().addContactPoint(contactPoint).build();
+		Cluster cluster = Cluster.builder().addContactPoint(contactPoint).withRetryPolicy(new CustomRetryPolicy()).build();
 		try {
 			session = cluster.connect(keyspace);
 		} catch (Exception e) {
@@ -62,8 +63,8 @@ public class BackendSession {
 			RENT_BOOK = session.prepare("UPDATE library_data SET rented_date = rented_date + ?, due_date = due_date + ? WHERE library_id=? AND book_id=?;");
 			RETURN_BOOK = session.prepare("UPDATE library_data SET queue = queue - ?, rented_date = rented_date - ?, due_date = due_date - ? WHERE library_id=? AND book_id=?;");
 			QUEUE_BOOK = session.prepare("UPDATE library_data SET queue = queue + ? WHERE library_id=? AND book_id=?;");
-			DEQUEUE_BOOK = session.prepare("UPDATE library_data SET queue = queue - ?,  rented_date = rented_date + ?, due_date = due_date + ? WHERE library_id=? AND book_id=? AND queue CONTAINS KEY ?	;");
-			UNRENT_BOOK = session.prepare("UPDATE library_data SET queue = queue + ?,  rented_date = rented_date - ?, due_date = due_date - ? WHERE library_id=? AND book_id=? AND rented_date CONTAINS KEY ?;");
+			DEQUEUE_BOOK = session.prepare("UPDATE library_data SET queue = queue - ?,  rented_date = rented_date + ?, due_date = due_date + ? WHERE library_id=? AND book_id=? IF queue CONTAINS KEY ?	;");
+			UNRENT_BOOK = session.prepare("UPDATE library_data SET queue = queue + ?,  rented_date = rented_date - ?, due_date = due_date - ? WHERE library_id=? AND book_id=? IF rented_date CONTAINS KEY ?;");
 		} catch (Exception e) {
 			throw new BackendException("Could not prepare statements. " + e.getMessage() + ".", e);
 		}
@@ -294,7 +295,7 @@ public class BackendSession {
 		return rs;
 	}
 
-	protected ResultSet upsertBookCassandra(String libraryId, String bookId, int bookCount) throws BackendException{
+	public ResultSet upsertBookCassandra(String libraryId, String bookId, int bookCount) throws BackendException{
 		BoundStatement bs = new BoundStatement(INSERT_BOOK);
 		bs.bind(libraryId, bookId, bookCount);
 		ResultSet rs;
@@ -310,7 +311,7 @@ public class BackendSession {
 		return rs;
 	}
 
-	protected ResultSet rentBookCassandra(String userId, String libraryId, String bookId) throws BackendException{
+	public ResultSet rentBookCassandra(String userId, String libraryId, String bookId) throws BackendException{
 		BoundStatement bs = new BoundStatement(RENT_BOOK);
 		Map<String, Date> myMap = new HashMap<>();
 		myMap.put(userId, new Date());
@@ -353,7 +354,7 @@ public class BackendSession {
 	}
 
 	protected ResultSet unrentBookCassandra(String userId, String libraryId, String bookId) throws BackendException{
-		BoundStatement bs = new BoundStatement(DEQUEUE_BOOK);
+		BoundStatement bs = new BoundStatement(UNRENT_BOOK);
 		Set<String> mySet = new HashSet<>();
 		mySet.add(userId);
 		Map<String, Date> myMap = new HashMap<>();
@@ -364,12 +365,15 @@ public class BackendSession {
 		return rs;
 	}
 
-	protected ResultSet executeQuery(BoundStatement bs) throws BackendException{
+	protected ResultSet executeQuery(BoundStatement bs) throws BackendException {
 		ResultSet rs;
 		try {
 			rs = session.execute(bs);
 			return rs;
-		} catch (Exception e) {
+		} catch (WriteTimeoutException e) {
+			throw e;
+		}
+		catch (Exception e) {
 			throw new BackendException("Could not perform a query. " + e.getMessage() + ".", e);
 		}
 	}

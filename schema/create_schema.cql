@@ -1,5 +1,5 @@
 CREATE KEYSPACE IF NOT EXISTS Library
-  WITH REPLICATION = { 'class' : 'SimpleStrategy', 'replication_factor' : 3 };
+  WITH REPLICATION = { 'class' : 'SimpleStrategy', 'replication_factor' : 1 };
 
 USE Library;
 
