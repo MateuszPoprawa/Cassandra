@@ -65,5 +65,6 @@ public class RentBookStressTest {
 
         System.out.println("❌ Failures: " + failures.get());
         System.out.println("⏱ Time: " + (end - start) + " ms");
+        backendSession.getConflictCount();
     }
 }
