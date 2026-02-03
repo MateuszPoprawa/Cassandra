@@ -26,6 +26,8 @@ dependencies {
     implementation 'ch.qos.logback:logback-classic:1.+'
     implementation 'com.datastax.cassandra:cassandra-driver-core:3.3.0'
     implementation 'org.apache.cassandra:cassandra-all:3.11.0'
+    testImplementation 'junit:junit:4.13.2'
+    testImplementation 'org.mockito:mockito-core:5.11.0'
 }
 
 // ---------------------- Build ----------------------
