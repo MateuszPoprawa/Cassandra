@@ -1,4 +1,3 @@
-import com.datastax.driver.core.exceptions.WriteTimeoutException;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Mockito;
@@ -51,8 +50,7 @@ public class RentBookStressTest {
                     if (backendSession.checkBookStatus() != 0) {
                         failures.incrementAndGet();
                     }
-                }
-                catch (Exception e) {
+                } catch (Exception e) {
                     e.printStackTrace();
                 } finally {
                     latch.countDown();

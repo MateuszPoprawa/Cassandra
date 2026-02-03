@@ -26,423 +26,422 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 public class BackendSession {
 
-	private static final Logger logger = LoggerFactory.getLogger(BackendSession.class);
+    private static final Logger logger = LoggerFactory.getLogger(BackendSession.class);
 
-	private final Session session;
+    private final Session session;
 
-	private AtomicInteger errCount;
+    private final AtomicInteger errCount;
 
-	public BackendSession(String contactPoint, String keyspace) throws BackendException {
+    public BackendSession(String contactPoint, String keyspace) throws BackendException {
 
-		Cluster cluster = Cluster.builder().addContactPoint(contactPoint).withRetryPolicy(new CustomRetryPolicy()).build();
-		try {
-			session = cluster.connect(keyspace);
-		} catch (Exception e) {
-			throw new BackendException("Could not connect to the cluster. " + e.getMessage() + ".", e);
-		}
-		prepareStatements();
-		errCount = new AtomicInteger(0);
-	}
+        Cluster cluster = Cluster.builder().addContactPoint(contactPoint).withRetryPolicy(new CustomRetryPolicy()).build();
+        try {
+            session = cluster.connect(keyspace);
+        } catch (Exception e) {
+            throw new BackendException("Could not connect to the cluster. " + e.getMessage() + ".", e);
+        }
+        prepareStatements();
+        errCount = new AtomicInteger(0);
+    }
 
-	private static final Scanner scanner = new Scanner(System.in);
+    private static final Scanner scanner = new Scanner(System.in);
 
-	private static PreparedStatement SELECT_BOOKS_FROM_LIBRARY;
-	private static PreparedStatement SELECT_BOOK;
-	private static PreparedStatement INSERT_BOOK;
-	private static PreparedStatement RENT_BOOK;
-	private static PreparedStatement RETURN_BOOK;
-	private static PreparedStatement QUEUE_BOOK;
-	private static PreparedStatement DEQUEUE_BOOK;
-	private static PreparedStatement UNRENT_BOOK;
+    private static PreparedStatement SELECT_BOOKS_FROM_LIBRARY;
+    private static PreparedStatement SELECT_BOOK;
+    private static PreparedStatement INSERT_BOOK;
+    private static PreparedStatement RENT_BOOK;
+    private static PreparedStatement RETURN_BOOK;
+    private static PreparedStatement QUEUE_BOOK;
+    private static PreparedStatement DEQUEUE_BOOK;
+    private static PreparedStatement UNRENT_BOOK;
 
-	private static final String LIBRARY_DATA_FORMAT = "%-15s %-15s %-15s\n";
+    private static final String LIBRARY_DATA_FORMAT = "%-15s %-15s %-15s\n";
 
 
-	private void prepareStatements() throws BackendException {
-		try {
-			SELECT_BOOKS_FROM_LIBRARY = session.prepare("SELECT * FROM library_data WHERE library_id=?;");
-			SELECT_BOOK = session.prepare("SELECT * FROM library_data " + "WHERE library_id=? AND book_id=?;");
-			INSERT_BOOK = session.prepare("INSERT INTO library_data (library_id, book_id, book_count) VALUES (?, ?, ?);");
-			RENT_BOOK = session.prepare("UPDATE library_data SET rented_date = rented_date + ?, due_date = due_date + ? WHERE library_id=? AND book_id=?;");
-			RETURN_BOOK = session.prepare("UPDATE library_data SET queue = queue - ?, rented_date = rented_date - ?, due_date = due_date - ? WHERE library_id=? AND book_id=?;");
-			QUEUE_BOOK = session.prepare("UPDATE library_data SET queue = queue + ? WHERE library_id=? AND book_id=?;");
-			DEQUEUE_BOOK = session.prepare("UPDATE library_data SET queue = queue - ?,  rented_date = rented_date + ?, due_date = due_date + ? WHERE library_id=? AND book_id=? IF queue CONTAINS KEY ?	;");
-			UNRENT_BOOK = session.prepare("UPDATE library_data SET queue = queue + ?,  rented_date = rented_date - ?, due_date = due_date - ? WHERE library_id=? AND book_id=? IF rented_date CONTAINS KEY ?;");
-		} catch (Exception e) {
-			throw new BackendException("Could not prepare statements. " + e.getMessage() + ".", e);
-		}
+    private void prepareStatements() throws BackendException {
+        try {
+            SELECT_BOOKS_FROM_LIBRARY = session.prepare("SELECT * FROM library_data WHERE library_id=?;");
+            SELECT_BOOK = session.prepare("SELECT * FROM library_data " + "WHERE library_id=? AND book_id=?;");
+            INSERT_BOOK = session.prepare("INSERT INTO library_data (library_id, book_id, book_count) VALUES (?, ?, ?);");
+            RENT_BOOK = session.prepare("UPDATE library_data SET rented_date = rented_date + ?, due_date = due_date + ? WHERE library_id=? AND book_id=?;");
+            RETURN_BOOK = session.prepare("UPDATE library_data SET queue = queue - ?, rented_date = rented_date - ?, due_date = due_date - ? WHERE library_id=? AND book_id=?;");
+            QUEUE_BOOK = session.prepare("UPDATE library_data SET queue = queue + ? WHERE library_id=? AND book_id=?;");
+            DEQUEUE_BOOK = session.prepare("UPDATE library_data SET queue = queue - ?,  rented_date = rented_date + ?, due_date = due_date + ? WHERE library_id=? AND book_id=? IF queue CONTAINS KEY ?	;");
+            UNRENT_BOOK = session.prepare("UPDATE library_data SET queue = queue + ?,  rented_date = rented_date - ?, due_date = due_date - ? WHERE library_id=? AND book_id=? IF rented_date CONTAINS KEY ?;");
+        } catch (Exception e) {
+            throw new BackendException("Could not prepare statements. " + e.getMessage() + ".", e);
+        }
 
-		logger.info("Statements prepared");
-	}
+        logger.info("Statements prepared");
+    }
 
-	//---------------------------HANDLING INTERFACE------------------------------------------------------
+    //---------------------------HANDLING INTERFACE------------------------------------------------------
 
-	public void selectBooksFromLibrary() throws BackendException {
+    public void selectBooksFromLibrary() throws BackendException {
 
-		String libraryId = getLibraryFromTerminal();
+        String libraryId = getLibraryFromTerminal();
 
-		ResultSet rs = selectBooksFromLibraryCassandra(libraryId);
+        ResultSet rs = selectBooksFromLibraryCassandra(libraryId);
 
-		showResults(rs);
-	}
+        showResults(rs);
+    }
 
-	public void selectBook() throws BackendException {
+    public void selectBook() throws BackendException {
 
-		String libraryId = getLibraryFromTerminal();
-		String bookId = getBookFromTerminal();
+        String libraryId = getLibraryFromTerminal();
+        String bookId = getBookFromTerminal();
 
-		ResultSet rs = selectBookCassandra(libraryId, bookId);
+        ResultSet rs = selectBookCassandra(libraryId, bookId);
 
-		showResults(rs);
-	}
+        showResults(rs);
+    }
 
-	public int checkBookStatus() throws BackendException {
+    public int checkBookStatus() throws BackendException {
 
-		String userId = getUserFromTerminal();
-		String libraryId = getLibraryFromTerminal();
-		String bookId = getBookFromTerminal();
+        String userId = getUserFromTerminal();
+        String libraryId = getLibraryFromTerminal();
+        String bookId = getBookFromTerminal();
 
-		Row row = validate(libraryId, bookId);
+        Row row = validate(libraryId, bookId);
 
-		int isRented = isBookRented(userId, row);
-		switch(isRented){
-			case 0:
-				System.out.println("Book is not rented.");
-				break;
-			case 1:
-				System.out.println("Book has been rented successfully.");
-				break;
-			case 2:
-				System.out.println("You're in the queue to get the book. Check back later.");
-				break;
-		}
-		return isRented;
-	}
+        int isRented = isBookRented(userId, row);
+        switch (isRented) {
+            case 0:
+                System.out.println("Book is not rented.");
+                break;
+            case 1:
+                System.out.println("Book has been rented successfully.");
+                break;
+            case 2:
+                System.out.println("You're in the queue to get the book. Check back later.");
+                break;
+        }
+        return isRented;
+    }
 
-	public void upsertBook() throws BackendException {
+    public void upsertBook() throws BackendException {
 
-		String libraryId = getLibraryFromTerminal();
-		String bookId = getBookFromTerminal();
-		int bookCount = getBookCountFromTerminal();
+        String libraryId = getLibraryFromTerminal();
+        String bookId = getBookFromTerminal();
+        int bookCount = getBookCountFromTerminal();
 
-		upsertBookCassandra(libraryId, bookId, bookCount);
+        upsertBookCassandra(libraryId, bookId, bookCount);
 
-		scanner.nextLine();
+        scanner.nextLine();
 
         logger.info("Book {} upserted", bookId);
-	}
+    }
 
-	public int rentBook() throws BackendException{
+    public int rentBook() throws BackendException {
 
-		String userId = getUserFromTerminal();
-		String libraryId = getLibraryFromTerminal();
-		String bookId = getBookFromTerminal();
+        String userId = getUserFromTerminal();
+        String libraryId = getLibraryFromTerminal();
+        String bookId = getBookFromTerminal();
 
-		ResultSet rs = selectBookCassandra(libraryId, bookId);
-		Row row = rs.one();
+        ResultSet rs = selectBookCassandra(libraryId, bookId);
+        Row row = rs.one();
 
-		int isRented = isBookRented(userId, row);
-		if(isRented > 0){
-			System.out.println("This book has already been rented by this user.");
-			return isRented;
-		}
-		int bookCount = row.getInt("book_count");
-		Map<String, Date> rented = row.getMap("rented_date", String.class, Date.class);
+        int isRented = isBookRented(userId, row);
+        if (isRented > 0) {
+            System.out.println("This book has already been rented by this user.");
+            return isRented;
+        }
+        int bookCount = row.getInt("book_count");
+        Map<String, Date> rented = row.getMap("rented_date", String.class, Date.class);
 
-		int diff = bookCount - rented.size();
-		if(diff > 0){
-			rentBookCassandra(userId, libraryId, bookId);
-		}else{
-			queueBookCassandra(userId, libraryId, bookId);
-		}
-		row = validate(libraryId, bookId);
-		isRented = isBookRented(userId, row);
-		switch(isRented){
-			case 0:
-				System.out.println("Book is not rented, a return has been made during execution.");
-				break;
-			case 1:
-				System.out.println("Book has been rented successfully.");
-				break;
-			case 2:
-				System.out.println("You're in the queue to get the book. Check back later.");
-				break;
-		}
-		return isRented;
-	}
+        int diff = bookCount - rented.size();
+        if (diff > 0) {
+            rentBookCassandra(userId, libraryId, bookId);
+        } else {
+            queueBookCassandra(userId, libraryId, bookId);
+        }
+        row = validate(libraryId, bookId);
+        isRented = isBookRented(userId, row);
+        switch (isRented) {
+            case 0:
+                System.out.println("Book is not rented, a return has been made during execution.");
+                break;
+            case 1:
+                System.out.println("Book has been rented successfully.");
+                break;
+            case 2:
+                System.out.println("You're in the queue to get the book. Check back later.");
+                break;
+        }
+        return isRented;
+    }
 
-	public int returnBook() throws BackendException{
+    public int returnBook() throws BackendException {
 
-		String userId = getUserFromTerminal();
-		String libraryId = getLibraryFromTerminal();
-		String bookId = getBookFromTerminal();
+        String userId = getUserFromTerminal();
+        String libraryId = getLibraryFromTerminal();
+        String bookId = getBookFromTerminal();
 
-		ResultSet rs = selectBookCassandra(libraryId, bookId);
-		Row row = rs.one();
+        ResultSet rs = selectBookCassandra(libraryId, bookId);
+        Row row = rs.one();
 
-		int isRented = isBookRented(userId, row);
-		switch(isRented){
-			case 0:
-				System.out.println("This book is not rented nor is this user in queue.");
-				break;
-			case 1:
-				returnBookCassandra(userId, libraryId, bookId);
-				validate(libraryId, bookId);
-				System.out.println("Book returned.");
-				break;
-			case 2:
-				System.out.println("User removed from queue to get the book.");
-				returnBookCassandra(userId, libraryId, bookId);
-				validate(libraryId, bookId);
-				break;
-		}
-		return isRented;
-	}
+        int isRented = isBookRented(userId, row);
+        switch (isRented) {
+            case 0:
+                System.out.println("This book is not rented nor is this user in queue.");
+                break;
+            case 1:
+                returnBookCassandra(userId, libraryId, bookId);
+                validate(libraryId, bookId);
+                System.out.println("Book returned.");
+                break;
+            case 2:
+                System.out.println("User removed from queue to get the book.");
+                returnBookCassandra(userId, libraryId, bookId);
+                validate(libraryId, bookId);
+                break;
+        }
+        return isRented;
+    }
 
-	public int getConflictCount() throws BackendException{
-		int conflicts = errCount.get();
-		System.out.println("Conflict count is: " + conflicts);
-		return conflicts;
-	}
+    public int getConflictCount() {
+        int conflicts = errCount.get();
+        System.out.println("Conflict count is: " + conflicts);
+        return conflicts;
+    }
 
 
-	//-----------------------------------PRIVATE STUFF--------------------------------------------------------------------------
+    //-----------------------------------PRIVATE STUFF--------------------------------------------------------------------------
 
-	protected Row validate(String libraryId, String bookId) throws BackendException{
-		boolean isOk;
-		ResultSet rs;
-		Row row;
-		do{
-			isOk = true;
-			rs = selectBookCassandra(libraryId, bookId);
-			row = rs.one();
-			if(moveToQueue(row)) isOk = false;
-			if(moveFromQueue(row)) isOk = false;
-		}while(!isOk);
-		return row;
-	}
+    protected Row validate(String libraryId, String bookId) throws BackendException {
+        boolean isOk;
+        ResultSet rs;
+        Row row;
+        do {
+            isOk = true;
+            rs = selectBookCassandra(libraryId, bookId);
+            row = rs.one();
+            if (moveToQueue(row)) isOk = false;
+            if (moveFromQueue(row)) isOk = false;
+        } while (!isOk);
+        return row;
+    }
 
-	protected boolean moveToQueue(Row row) throws BackendException{
-		boolean result = false;
+    protected boolean moveToQueue(Row row) throws BackendException {
+        boolean result = false;
 
-		Map<String, Date> queue = row.getMap("queue", String.class, Date.class);
-		Map<String, Date> rented = row.getMap("rented_date", String.class, Date.class);
-		int bookCount = row.getInt("book_count");
-		String libraryId = row.getString("library_id");
-		String bookId = row.getString("book_id");
+        Map<String, Date> queue = row.getMap("queue", String.class, Date.class);
+        Map<String, Date> rented = row.getMap("rented_date", String.class, Date.class);
+        int bookCount = row.getInt("book_count");
+        String libraryId = row.getString("library_id");
+        String bookId = row.getString("book_id");
 
-		if(rented.size() <= bookCount) return result;
-		int diff = rented.size() - bookCount;
-		addConflict(diff);
-		for(int i = 0; i < diff; i++){
-			String nextUser = null;
-			Date nextDate = null;
-			for(String userId : rented.keySet()){
-				Date date = rented.get(userId);
-				if(nextUser == null){
-					nextUser = userId;
-					nextDate = date;
-					continue;
-				}
-				if(date.after(nextDate)){
-					nextUser = userId;
-					nextDate = date;
-				}
-			}
-			unrentBookCassandra(nextUser, libraryId, bookId);
-			result = true;
-		}
-		return result;
-	}
+        if (rented.size() <= bookCount) return result;
+        int diff = rented.size() - bookCount;
+        addConflict(diff);
+        for (int i = 0; i < diff; i++) {
+            String nextUser = null;
+            Date nextDate = null;
+            for (String userId : rented.keySet()) {
+                Date date = rented.get(userId);
+                if (nextUser == null) {
+                    nextUser = userId;
+                    nextDate = date;
+                    continue;
+                }
+                if (date.after(nextDate)) {
+                    nextUser = userId;
+                    nextDate = date;
+                }
+            }
+            unrentBookCassandra(nextUser, libraryId, bookId);
+            result = true;
+        }
+        return result;
+    }
 
-	protected boolean moveFromQueue(Row row) throws BackendException{
-		boolean result = false;
-		Map<String, Date> queue = row.getMap("queue", String.class, Date.class);
-		Map<String, Date> rented = row.getMap("rented_date", String.class, Date.class);
-		int bookCount = row.getInt("book_count");
-		String libraryId = row.getString("library_id");
-		String bookId = row.getString("book_id");
+    protected boolean moveFromQueue(Row row) throws BackendException {
+        boolean result = false;
+        Map<String, Date> queue = row.getMap("queue", String.class, Date.class);
+        Map<String, Date> rented = row.getMap("rented_date", String.class, Date.class);
+        int bookCount = row.getInt("book_count");
+        String libraryId = row.getString("library_id");
+        String bookId = row.getString("book_id");
 
-		if(rented.size() >= bookCount) return result;
+        if (rented.size() >= bookCount) return result;
 
-		int diff = bookCount - rented.size();
-		diff = Math.min(diff, queue.size());
+        int diff = bookCount - rented.size();
+        diff = Math.min(diff, queue.size());
 
-		for(int i = 0; i < diff; i++){
-			String nextUser = null;
-			Date nextDate = null;
-			for(String userId : queue.keySet()){
-				Date date = queue.get(userId);
-				if(nextUser == null){
-					nextUser = userId;
-					nextDate = date;
-					continue;
-				}
-				if(date.before(nextDate)){
-					nextUser = userId;
-					nextDate = date;
-				}
-			}
-			dequeueBookCassandra(nextUser, libraryId, bookId);
-			result = true;
-		}
-		return result;
-	}
+        for (int i = 0; i < diff; i++) {
+            String nextUser = null;
+            Date nextDate = null;
+            for (String userId : queue.keySet()) {
+                Date date = queue.get(userId);
+                if (nextUser == null) {
+                    nextUser = userId;
+                    nextDate = date;
+                    continue;
+                }
+                if (date.before(nextDate)) {
+                    nextUser = userId;
+                    nextDate = date;
+                }
+            }
+            dequeueBookCassandra(nextUser, libraryId, bookId);
+            result = true;
+        }
+        return result;
+    }
 
-	protected int isBookRented(String userId, Row row) throws BackendException{
-		Map<String, Date> queue = row.getMap("queue", String.class, Date.class);
-		Map<String, Date> rented = row.getMap("rented_date", String.class, Date.class);
-		if(rented.containsKey(userId)) return 1;
-		if(queue.containsKey(userId) )return 2;
-		return 0;
-	}
+    protected int isBookRented(String userId, Row row) {
+        Map<String, Date> queue = row.getMap("queue", String.class, Date.class);
+        Map<String, Date> rented = row.getMap("rented_date", String.class, Date.class);
+        if (rented.containsKey(userId)) return 1;
+        if (queue.containsKey(userId)) return 2;
+        return 0;
+    }
 
-	protected void finalize() throws BackendException{
-		try {
-			if (session != null) {
-				session.getCluster().close();
-			}
-		} catch (Exception e) {
-			logger.error("Could not close existing cluster", e);
-		}
-	}
+    protected void finalize() {
+        try {
+            if (session != null) {
+                session.getCluster().close();
+            }
+        } catch (Exception e) {
+            logger.error("Could not close existing cluster", e);
+        }
+    }
 
-	protected void showResults(ResultSet rs) throws BackendException {
-		StringBuilder builder = new StringBuilder();
-		builder.append(String.format(LIBRARY_DATA_FORMAT, "LIBRARY_ID", "BOOK_ID", "BOOK_COUNT"));
+    protected void showResults(ResultSet rs) {
+        StringBuilder builder = new StringBuilder();
+        builder.append(String.format(LIBRARY_DATA_FORMAT, "LIBRARY_ID", "BOOK_ID", "BOOK_COUNT"));
 
-		for (Row row : rs) {
-			String libraryId = row.getString("library_id");
-			String bookId = row.getString("book_id");
-			int bookCount = row.getInt("book_count");
+        for (Row row : rs) {
+            String libraryId = row.getString("library_id");
+            String bookId = row.getString("book_id");
+            int bookCount = row.getInt("book_count");
 
-			builder.append(String.format(LIBRARY_DATA_FORMAT, libraryId, bookId, bookCount));
-		}
+            builder.append(String.format(LIBRARY_DATA_FORMAT, libraryId, bookId, bookCount));
+        }
 
-		System.out.println(builder);
-	}
+        System.out.println(builder);
+    }
 
-	protected int addConflict(int err){
-		return errCount.addAndGet(err);
-	}
+    protected int addConflict(int err) {
+        return errCount.addAndGet(err);
+    }
 
-	//----------------------------CASSANDRA QUERY EXECUTION--------------------------------------------------------------------------
+    //----------------------------CASSANDRA QUERY EXECUTION--------------------------------------------------------------------------
 
-	protected ResultSet selectBookCassandra(String libraryId, String bookId) throws BackendException{
-		BoundStatement bs = new BoundStatement(SELECT_BOOK);
-		bs.bind(libraryId, bookId);
-		ResultSet rs;
-		rs = executeQuery(bs);
-		return rs;
-	}
+    protected ResultSet selectBookCassandra(String libraryId, String bookId) throws BackendException {
+        BoundStatement bs = new BoundStatement(SELECT_BOOK);
+        bs.bind(libraryId, bookId);
+        ResultSet rs;
+        rs = executeQuery(bs);
+        return rs;
+    }
 
-	public ResultSet upsertBookCassandra(String libraryId, String bookId, int bookCount) throws BackendException{
-		BoundStatement bs = new BoundStatement(INSERT_BOOK);
-		bs.bind(libraryId, bookId, bookCount);
-		ResultSet rs;
-		rs = executeQuery(bs);
-		return rs;
-	}
+    public ResultSet upsertBookCassandra(String libraryId, String bookId, int bookCount) throws BackendException {
+        BoundStatement bs = new BoundStatement(INSERT_BOOK);
+        bs.bind(libraryId, bookId, bookCount);
+        ResultSet rs;
+        rs = executeQuery(bs);
+        return rs;
+    }
 
-	protected ResultSet selectBooksFromLibraryCassandra(String libraryId) throws BackendException{
-		BoundStatement bs = new BoundStatement(SELECT_BOOKS_FROM_LIBRARY);
-		bs.bind(libraryId);
-		ResultSet rs;
-		rs = executeQuery(bs);
-		return rs;
-	}
+    protected ResultSet selectBooksFromLibraryCassandra(String libraryId) throws BackendException {
+        BoundStatement bs = new BoundStatement(SELECT_BOOKS_FROM_LIBRARY);
+        bs.bind(libraryId);
+        ResultSet rs;
+        rs = executeQuery(bs);
+        return rs;
+    }
 
-	public ResultSet rentBookCassandra(String userId, String libraryId, String bookId) throws BackendException{
-		BoundStatement bs = new BoundStatement(RENT_BOOK);
-		Map<String, Date> myMap = new HashMap<>();
-		myMap.put(userId, new Date());
-		bs.bind(myMap, myMap, libraryId, bookId);
-		ResultSet rs;
-		rs = executeQuery(bs);
-		return rs;
-	}
+    public ResultSet rentBookCassandra(String userId, String libraryId, String bookId) throws BackendException {
+        BoundStatement bs = new BoundStatement(RENT_BOOK);
+        Map<String, Date> myMap = new HashMap<>();
+        myMap.put(userId, new Date());
+        bs.bind(myMap, myMap, libraryId, bookId);
+        ResultSet rs;
+        rs = executeQuery(bs);
+        return rs;
+    }
 
-	protected ResultSet returnBookCassandra(String userId, String libraryId, String bookId) throws BackendException{
-		BoundStatement bs = new BoundStatement(RETURN_BOOK);
-		Set<String> mySet = new HashSet<>();
-		mySet.add(userId);
-		bs.bind(mySet, mySet, mySet, libraryId, bookId);
-		ResultSet rs;
-		rs = executeQuery(bs);
-		return rs;
-	}
+    protected ResultSet returnBookCassandra(String userId, String libraryId, String bookId) throws BackendException {
+        BoundStatement bs = new BoundStatement(RETURN_BOOK);
+        Set<String> mySet = new HashSet<>();
+        mySet.add(userId);
+        bs.bind(mySet, mySet, mySet, libraryId, bookId);
+        ResultSet rs;
+        rs = executeQuery(bs);
+        return rs;
+    }
 
-	protected ResultSet queueBookCassandra(String userId, String libraryId, String bookId) throws BackendException{
-		BoundStatement bs = new BoundStatement(QUEUE_BOOK);
-		Map<String, Date> myMap = new HashMap<>();
-		myMap.put(userId, new Date());
-		bs.bind(myMap, libraryId, bookId);
-		ResultSet rs;
-		rs = executeQuery(bs);
-		return rs;
-	}
+    protected ResultSet queueBookCassandra(String userId, String libraryId, String bookId) throws BackendException {
+        BoundStatement bs = new BoundStatement(QUEUE_BOOK);
+        Map<String, Date> myMap = new HashMap<>();
+        myMap.put(userId, new Date());
+        bs.bind(myMap, libraryId, bookId);
+        ResultSet rs;
+        rs = executeQuery(bs);
+        return rs;
+    }
 
-	protected ResultSet dequeueBookCassandra(String userId, String libraryId, String bookId) throws BackendException{
-		BoundStatement bs = new BoundStatement(DEQUEUE_BOOK);
-		Set<String> mySet = new HashSet<>();
-		mySet.add(userId);
-		Map<String, Date> myMap = new HashMap<>();
-		myMap.put(userId, new Date());
-		bs.bind(mySet, myMap, myMap, libraryId, bookId, userId);
-		ResultSet rs;
-		rs = executeQuery(bs);
-		return rs;
-	}
+    protected ResultSet dequeueBookCassandra(String userId, String libraryId, String bookId) throws BackendException {
+        BoundStatement bs = new BoundStatement(DEQUEUE_BOOK);
+        Set<String> mySet = new HashSet<>();
+        mySet.add(userId);
+        Map<String, Date> myMap = new HashMap<>();
+        myMap.put(userId, new Date());
+        bs.bind(mySet, myMap, myMap, libraryId, bookId, userId);
+        ResultSet rs;
+        rs = executeQuery(bs);
+        return rs;
+    }
 
-	protected ResultSet unrentBookCassandra(String userId, String libraryId, String bookId) throws BackendException{
-		BoundStatement bs = new BoundStatement(UNRENT_BOOK);
-		Set<String> mySet = new HashSet<>();
-		mySet.add(userId);
-		Map<String, Date> myMap = new HashMap<>();
-		myMap.put(userId, new Date());
-		bs.bind(myMap, mySet, mySet, libraryId, bookId, userId);
-		ResultSet rs;
-		rs = executeQuery(bs);
-		return rs;
-	}
+    protected ResultSet unrentBookCassandra(String userId, String libraryId, String bookId) throws BackendException {
+        BoundStatement bs = new BoundStatement(UNRENT_BOOK);
+        Set<String> mySet = new HashSet<>();
+        mySet.add(userId);
+        Map<String, Date> myMap = new HashMap<>();
+        myMap.put(userId, new Date());
+        bs.bind(myMap, mySet, mySet, libraryId, bookId, userId);
+        ResultSet rs;
+        rs = executeQuery(bs);
+        return rs;
+    }
 
-	protected ResultSet executeQuery(BoundStatement bs) throws BackendException {
-		ResultSet rs;
-		try {
-			rs = session.execute(bs);
-			return rs;
-		} catch (WriteTimeoutException e) {
-			throw e;
-		}
-		catch (Exception e) {
-			throw new BackendException("Could not perform a query. " + e.getMessage() + ".", e);
-		}
-	}
+    protected ResultSet executeQuery(BoundStatement bs) throws BackendException {
+        ResultSet rs;
+        try {
+            rs = session.execute(bs);
+            return rs;
+        } catch (WriteTimeoutException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new BackendException("Could not perform a query. " + e.getMessage() + ".", e);
+        }
+    }
 
-	//------------------TERMINAL INPUTS-------------------------------------------------------------------------------------------------
+    //------------------TERMINAL INPUTS-------------------------------------------------------------------------------------------------
 
-	public String getUserFromTerminal() throws BackendException{
-		System.out.println("Enter user id: ");
-		String userId = scanner.nextLine();
-		return userId;
-	}
+    public String getUserFromTerminal() {
+        System.out.println("Enter user id: ");
+        String userId = scanner.nextLine();
+        return userId;
+    }
 
-	public String getLibraryFromTerminal() throws BackendException{
-		System.out.println("Enter library id: ");
-		String LibraryId = scanner.nextLine();
-		return LibraryId;
-	}
+    public String getLibraryFromTerminal() {
+        System.out.println("Enter library id: ");
+        String LibraryId = scanner.nextLine();
+        return LibraryId;
+    }
 
-	public String getBookFromTerminal() throws BackendException{
-		System.out.println("Enter book id: ");
-		String bookId = scanner.nextLine();
-		return bookId;
-	}
+    public String getBookFromTerminal() {
+        System.out.println("Enter book id: ");
+        String bookId = scanner.nextLine();
+        return bookId;
+    }
 
-	protected int getBookCountFromTerminal() throws BackendException{
-		System.out.println("Enter book count: ");
-		int bookCount = scanner.nextInt();
-		return bookCount;
-	}
+    protected int getBookCountFromTerminal() {
+        System.out.println("Enter book count: ");
+        int bookCount = scanner.nextInt();
+        return bookCount;
+    }
 
 }
