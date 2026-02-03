@@ -40,6 +40,7 @@ public class Main {
                 case 4: session.rentBook(); break;
                 case 5: session.returnBook(); break;
                 case 6: session.checkBookStatus(); break;
+                case 7: session.getConflictCount(); break;
                 default: break;
             }
         }
@@ -55,6 +56,6 @@ public class Main {
         System.out.println("4 - Rent book");
         System.out.println("5 - Return book");
         System.out.println("6 - Check book status");
-        System.out.println("7 - get number of conflicts");
+        //System.out.println("7 - Get number of conflicts");
     }
 }

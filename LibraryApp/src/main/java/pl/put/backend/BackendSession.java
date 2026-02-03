@@ -14,11 +14,11 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 /*
- * For error handling done right see: 
+ * For error handling done right see:
  * https://www.datastax.com/dev/blog/cassandra-error-handling-done-right
- * 
- * Performing stress tests often results in numerous WriteTimeoutExceptions, 
- * ReadTimeoutExceptions (thrown by Cassandra replicas) and 
+ *
+ * Performing stress tests often results in numerous WriteTimeoutExceptions,
+ * ReadTimeoutExceptions (thrown by Cassandra replicas) and
  * OpetationTimedOutExceptions (thrown by the client). Remember to retry
  * failed operations until success (it can be done through the RetryPolicy mechanism:
  * https://stackoverflow.com/questions/30329956/cassandra-datastax-driver-retry-policy )
@@ -185,12 +185,12 @@ public class BackendSession {
 			case 0:
 				System.out.println("This book is not rented nor is this user in queue.");
 				break;
-			case 1: 
+			case 1:
 				returnBookCassandra(userId, libraryId, bookId);
 				validate(libraryId, bookId);
 				System.out.println("Book returned.");
 				break;
-			case 2: 
+			case 2:
 				System.out.println("User removed from queue to get the book.");
 				returnBookCassandra(userId, libraryId, bookId);
 				validate(libraryId, bookId);
@@ -421,19 +421,19 @@ public class BackendSession {
 
 	//------------------TERMINAL INPUTS-------------------------------------------------------------------------------------------------
 
-	protected String getUserFromTerminal() throws BackendException{
+	public String getUserFromTerminal() throws BackendException{
 		System.out.println("Enter user id: ");
 		String userId = scanner.nextLine();
 		return userId;
 	}
 
-	protected String getLibraryFromTerminal() throws BackendException{
+	public String getLibraryFromTerminal() throws BackendException{
 		System.out.println("Enter library id: ");
 		String LibraryId = scanner.nextLine();
 		return LibraryId;
 	}
 
-	protected String getBookFromTerminal() throws BackendException{
+	public String getBookFromTerminal() throws BackendException{
 		System.out.println("Enter book id: ");
 		String bookId = scanner.nextLine();
 		return bookId;
