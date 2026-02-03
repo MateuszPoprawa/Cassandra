@@ -101,9 +101,9 @@ public class BackendSession {
 		String libraryId = getLibraryFromTerminal();
 		String bookId = getBookFromTerminal();
 
-		ResultSet rs = validate(libraryId, bookId);
+		Row row = validate(libraryId, bookId);
 
-		int isRented = isBookRented(userId, rs);
+		int isRented = isBookRented(userId, row);
 		switch(isRented){
 			case 0:
 				System.out.println("Book is not rented.");
@@ -138,25 +138,24 @@ public class BackendSession {
 		String bookId = getBookFromTerminal();
 
 		ResultSet rs = selectBookCassandra(libraryId, bookId);
+		Row row = rs.one();
 
-		int isRented = isBookRented(userId, rs);
+		int isRented = isBookRented(userId, row);
 		if(isRented > 0){
 			System.out.println("This book has already been rented by this user.");
 			return isRented;
 		}
-		for(Row row : rs){
-			int bookCount = row.getInt("book_count");
-			Map<String, Date> rented = row.getMap("rented_date", String.class, Date.class);
+		int bookCount = row.getInt("book_count");
+		Map<String, Date> rented = row.getMap("rented_date", String.class, Date.class);
 
-			int diff = bookCount - rented.size();
-			if(diff > 0){
-				rentBookCassandra(userId, libraryId, bookId);
-			}else{
-				queueBookCassandra(userId, libraryId, bookId);
-			}
+		int diff = bookCount - rented.size();
+		if(diff > 0){
+			rentBookCassandra(userId, libraryId, bookId);
+		}else{
+			queueBookCassandra(userId, libraryId, bookId);
 		}
-		rs = validate(libraryId, bookId);
-		isRented = isBookRented(userId, rs);
+		row = validate(libraryId, bookId);
+		isRented = isBookRented(userId, row);
 		switch(isRented){
 			case 0:
 				System.out.println("Book is not rented, a return has been made during execution.");
@@ -178,8 +177,9 @@ public class BackendSession {
 		String bookId = getBookFromTerminal();
 
 		ResultSet rs = selectBookCassandra(libraryId, bookId);
+		Row row = rs.one();
 
-		int isRented = isBookRented(userId, rs);
+		int isRented = isBookRented(userId, row);
 		switch(isRented){
 			case 0:
 				System.out.println("This book is not rented nor is this user in queue.");
@@ -207,97 +207,92 @@ public class BackendSession {
 
 	//-----------------------------------PRIVATE STUFF--------------------------------------------------------------------------
 
-	protected ResultSet validate(String libraryId, String bookId) throws BackendException{
+	protected Row validate(String libraryId, String bookId) throws BackendException{
 		boolean isOk;
 		ResultSet rs;
+		Row row;
 		do{
 			isOk = true;
 			rs = selectBookCassandra(libraryId, bookId);
-			if(moveToQueue(rs)) isOk = false;
-			if(moveFromQueue(rs)) isOk = false;
+			row = rs.one();
+			if(moveToQueue(row)) isOk = false;
+			if(moveFromQueue(row)) isOk = false;
 		}while(!isOk);
-		return rs;
+		return row;
 	}
 
-	protected boolean moveToQueue(ResultSet rs) throws BackendException{
+	protected boolean moveToQueue(Row row) throws BackendException{
 		boolean result = false;
-		for (Row row : rs) {
 
-			Map<String, Date> queue = row.getMap("queue", String.class, Date.class);
-			Map<String, Date> rented = row.getMap("rented_date", String.class, Date.class);
-			int bookCount = row.getInt("book_count");
-			String libraryId = row.getString("library_id");
-			String bookId = row.getString("book_id");
+		Map<String, Date> queue = row.getMap("queue", String.class, Date.class);
+		Map<String, Date> rented = row.getMap("rented_date", String.class, Date.class);
+		int bookCount = row.getInt("book_count");
+		String libraryId = row.getString("library_id");
+		String bookId = row.getString("book_id");
 
-			if(rented.size() <= bookCount) continue;
-			int diff = rented.size() - bookCount;
-			addConflict(diff);
-			for(int i = 0; i < diff; i++){
-				String nextUser = null;
-				Date nextDate = null;
-				for(String userId : rented.keySet()){
-					Date date = rented.get(userId);
-					if(nextUser == null){
-						nextUser = userId;
-						nextDate = date;
-						continue;
-					}
-					if(date.after(nextDate)){
-						nextUser = userId;
-						nextDate = date;
-					}
+		if(rented.size() <= bookCount) return result;
+		int diff = rented.size() - bookCount;
+		addConflict(diff);
+		for(int i = 0; i < diff; i++){
+			String nextUser = null;
+			Date nextDate = null;
+			for(String userId : rented.keySet()){
+				Date date = rented.get(userId);
+				if(nextUser == null){
+					nextUser = userId;
+					nextDate = date;
+					continue;
 				}
-				unrentBookCassandra(nextUser, libraryId, bookId);
-				result = true;
+				if(date.after(nextDate)){
+					nextUser = userId;
+					nextDate = date;
+				}
 			}
+			unrentBookCassandra(nextUser, libraryId, bookId);
+			result = true;
 		}
 		return result;
 	}
 
-	protected boolean moveFromQueue(ResultSet rs) throws BackendException{
+	protected boolean moveFromQueue(Row row) throws BackendException{
 		boolean result = false;
-		for (Row row : rs) {
+		Map<String, Date> queue = row.getMap("queue", String.class, Date.class);
+		Map<String, Date> rented = row.getMap("rented_date", String.class, Date.class);
+		int bookCount = row.getInt("book_count");
+		String libraryId = row.getString("library_id");
+		String bookId = row.getString("book_id");
 
-			Map<String, Date> queue = row.getMap("queue", String.class, Date.class);
-			Map<String, Date> rented = row.getMap("rented_date", String.class, Date.class);
-			int bookCount = row.getInt("book_count");
-			String libraryId = row.getString("library_id");
-			String bookId = row.getString("book_id");
+		if(rented.size() >= bookCount) return result;
 
-			if(rented.size() >= bookCount) continue;
+		int diff = bookCount - rented.size();
+		diff = Math.min(diff, queue.size());
 
-			int diff = bookCount - rented.size();
-			diff = Math.min(diff, queue.size());
-
-			for(int i = 0; i < diff; i++){
-				String nextUser = null;
-				Date nextDate = null;
-				for(String userId : queue.keySet()){
-					Date date = queue.get(userId);
-					if(nextUser == null){
-						nextUser = userId;
-						nextDate = date;
-						continue;
-					}
-					if(date.before(nextDate)){
-						nextUser = userId;
-						nextDate = date;
-					}
+		for(int i = 0; i < diff; i++){
+			String nextUser = null;
+			Date nextDate = null;
+			for(String userId : queue.keySet()){
+				Date date = queue.get(userId);
+				if(nextUser == null){
+					nextUser = userId;
+					nextDate = date;
+					continue;
 				}
-				dequeueBookCassandra(nextUser, libraryId, bookId);
-				result = true;
+				if(date.before(nextDate)){
+					nextUser = userId;
+					nextDate = date;
+				}
 			}
+			dequeueBookCassandra(nextUser, libraryId, bookId);
+			result = true;
 		}
 		return result;
 	}
 
-	protected int isBookRented(String userId, ResultSet rs) throws BackendException{
-		for (Row row : rs) {
-			Map<String, Date> queue = row.getMap("queue", String.class, Date.class);
-			Map<String, Date> rented = row.getMap("rented_date", String.class, Date.class);
-			if(rented.containsKey(userId)) return 1;
-			if(queue.containsKey(userId) )return 2;
-		}
+	protected int isBookRented(String userId, Row row) throws BackendException{
+		Map<String, Date> queue = row.getMap("queue", String.class, Date.class);
+		Map<String, Date> rented = row.getMap("rented_date", String.class, Date.class);
+		if(rented.containsKey(userId)) return 1;
+		if(queue.containsKey(userId) )return 2;
 		return 0;
 	}
 
